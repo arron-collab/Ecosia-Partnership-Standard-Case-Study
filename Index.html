@@ -1,0 +1,1729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ecosia Case Study Report</title>
+    <!-- 1. Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 2. Load React & ReactDOM -->
+    <!-- We use the "development" version for better error messages. -->
+    <script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
+    
+    <!-- 3. Load Babel to transpile JSX in the browser -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        /* This prevents a white flash while the app loads */
+        body {
+            background-color: #334839;
+        }
+    </style>
+</head>
+<body>
+    <!-- 4. This is the root element where your React app will be mounted -->
+    <div id="root"></div>
+
+    <!-- 5. This script contains your entire React application -->
+    <!-- Note: type="text/babel" tells Babel to transpile this block -->
+    <script type="text/babel">
+        
+        // We get React's functions from the global 'React' object
+        // instead of using an 'import' statement.
+        const { useState, useEffect, useRef } = React;
+
+        // Note: 'recharts' is not available in this environment.
+        // We are using stubs to simulate the components and prevent errors.
+        // import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+
+        // This component uses recharts, but it's not imported in the React environment.
+        // We'll add stubs for the components used so it renders without error.
+        // In a real React project, you'd install and import 'recharts'.
+
+        const
+        stubs = {
+            BarChart: ({ children, ...props }) => <div {...props} data-stub="BarChart">{children}</div>,
+            Bar: (props) => <div {...props} data-stub="Bar" />,
+            XAxis: (props) => <div {...props} data-stub="XAxis" />,
+            YAxis: (props) => <div {...props} data-stub="YAxis" />,
+            CartesianGrid: (props) => <div {...props} data-stub="CartesianGrid" />,
+            Tooltip: (props) => <div {...props} data-stub="Tooltip" />,
+            ResponsiveContainer: ({ children }) => <div data-stub="ResponsiveContainer" style={{ width: '100%', height: 300, border: '1px dashed #555', padding: '10px', boxSizing: 'border-box' }}><p style={{ margin: 0, color: '#999' }}>Chart Container</p>{children}</div>,
+            LineChart: ({ children, ...props }) => <div {...props} data-stub="LineChart">{children}</div>,
+            Line: (props) => <div {...props} data-stub="Line" />,
+        };
+
+        // --- NEW HOOK ---
+        // Custom hook for counting animations
+        const useCountUp = (endValue, duration = 2000, isVisible) => {
+        const [count, setCount] = useState(0);
+        const frameRef = useRef(null);
+        const startTimeRef = useRef(null);
+
+        const easeOutCubic = (t) => (--t) * t * t + 1;
+
+        useEffect(() => {
+            if (!isVisible) {
+            setCount(0); // Reset when not visible
+            startTimeRef.current = null;
+            if (frameRef.current) {
+                cancelAnimationFrame(frameRef.current);
+            }
+            return;
+            }
+
+            const animate = (timestamp) => {
+            if (!startTimeRef.current) {
+                startTimeRef.current = timestamp;
+            }
+
+            const elapsed = timestamp - startTimeRef.current;
+            const progress = Math.min(elapsed / duration, 1);
+            const easedProgress = easeOutCubic(progress);
+            
+            const currentCount = easedProgress * endValue;
+            setCount(currentCount);
+
+            if (progress < 1) {
+                frameRef.current = requestAnimationFrame(animate);
+            } else {
+                // Ensure it ends exactly on the endValue
+                setCount(endValue);
+                startTimeRef.current = null;
+            }
+            };
+
+            frameRef.current = requestAnimationFrame(animate);
+
+            return () => {
+            if (frameRef.current) {
+                cancelAnimationFrame(frameRef.current);
+            }
+            startTimeRef.current = null;
+            };
+        }, [endValue, duration, isVisible]);
+
+        return count;
+        };
+
+        // --- NEW COMPONENT ---
+        // Component to display the animated metric
+        const AnimatedMetric = ({ 
+        endValue, 
+        isVisible, 
+        prefix = '', 
+        suffix = '', 
+        decimals = 0,
+        formattingFn, // Optional custom formatter
+        style = {}
+        }) => {
+        const count = useCountUp(endValue, 2000, isVisible);
+
+        const formatValue = (value) => {
+            if (formattingFn) {
+            return formattingFn(value);
+            }
+            return value.toLocaleString(undefined, {
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals,
+            });
+        };
+
+        return (
+            <div style={style}>
+            {prefix}{formatValue(count)}{suffix}
+            </div>
+        );
+        };
+
+
+        const App = () => {
+        const [scrollProgress, setScrollProgress] = useState(0);
+        const [activeSection, setActiveSection] = useState(0);
+        const [sectionProgress, setSectionProgress] = useState({});
+        const sectionsRef = useRef([]);
+        const [visibleElements, setVisibleElements] = useState(new Set());
+
+        // Earthy color scheme
+        const colors = {
+            bg: '#334839',       // Deep forest green
+            bgAlt: '#3d5345',    // Lighter forest green
+            bgLight: '#BCB88A',   // Warm beige
+            accent: '#5DD25E',    // Bright green (keep)
+            accentDark: '#4ab84d',
+            warning: '#d4a574',   // Warm amber (instead of red)
+            warningDark: '#b8916a',
+            text: '#ffffff',
+            textMuted: '#c5c5c8', // Slightly adjusted for better contrast
+            textDark: '#334839',
+            border: '#4a5f50'
+        };
+
+        // Helper function for responsive text
+        const responsiveText = (base, min, max) => `clamp(${min}px, ${base}vw, ${max}px)`;
+
+        // Monthly performance data
+        const monthlyData = [
+            { month: 'Jan', views: 364, cpm: 54, er: 2.3, creators: 5, spend: 20, label: 'Phase 1' },
+            { month: 'Mar', views: 603, cpm: 23, er: 3.2, creators: 2, spend: 15, label: 'Breakthrough' },
+            { month: 'Apr', views: 369, cpm: 37, er: 1.7, creators: 2, spend: 15, label: 'Learning' },
+            { month: 'May', views: 217, cpm: 63, er: 3.5, creators: 2, spend: 15, label: 'Learning' },
+            { month: 'Jun', views: 217, cpm: 103, er: 1.3, creators: 3, spend: 15, label: 'Learning' }
+        ];
+
+        // Updated creator tiers to replace Carmie with Hannah
+        const creatorTiers = [
+            { tier: 'Macro (500k+)', example: 'Villaniveus', cpm: 38, performance: 'Excellent', highlight: true },
+            { tier: 'Mid-tier (100k-500k)', example: 'Yinrun', cpm: 45, performance: 'Very Good' },
+            { tier: 'Lifestyle Generic', example: 'Hannah', cpm: 54, performance: 'Poor Fit' }, // Replaced Carmie
+            { tier: 'Micro (<100k)', example: 'Various', cpm: 103, performance: 'Expensive' }
+        ];
+
+        // --- VIDEO LINKS ---
+        // MODIFIED to use YouTube "watch" links.
+        // Paste your YouTube "watch" links here and the code will automatically convert them to embed links.
+        const campaignContent = [
+            { id: 1, creator: 'Villaniveus', views: '535k', er: '8%', type: 'video', link: 'https://www.youtube.com/watch?v=PLACEHOLDER_VIDEO_ID_1' }, // Replace with your YouTube "watch" link
+            { id: 2, creator: 'Yinrun', views: '69k', er: '4%', type: 'video', link: 'https://www.youtube.com/watch?v=PLACEHOLDER_VIDEO_ID_2' }, // Replace with your YouTube "watch" link
+            { id: 3, creator: 'Hannah', views: '150k', er: '2.5%', type: 'video', link: 'https://www.youtube.com/watch?v=PLACEHOLDER_VIDEO_ID_3' } // Replace with your YouTube "watch" link
+        ];
+
+
+        // Handle scroll progress
+        useEffect(() => {
+            const handleScroll = () => {
+            const windowHeight = window.innerHeight;
+            const documentHeight = document.documentElement.scrollHeight - windowHeight;
+            const scrolled = window.scrollY;
+            const progress = (scrolled / documentHeight) * 100;
+            setScrollProgress(progress);
+
+            // Calculate progress within each section
+            sectionsRef.current.forEach((section, index) => {
+                if (section) {
+                const rect = section.getBoundingClientRect();
+                const sectionHeight = section.offsetHeight;
+                const viewportHeight = window.innerHeight;
+                
+                // Calculate how far through the section we are
+                const sectionTop = rect.top;
+                const sectionBottom = rect.bottom;
+                
+                if (sectionTop <= viewportHeight && sectionBottom >= 0) {
+                    // This logic calculates progress based on how far the top of the section
+                    // has scrolled past the bottom of the viewport.
+                    // A value of 0 means the top just entered the viewport.
+                    // A value of 1 means the bottom has just left the viewport.
+                    const sectionScrollProgress = Math.max(0, Math.min(1, (viewportHeight - sectionTop) / (sectionHeight + viewportHeight)));
+                    
+                    setSectionProgress(prev => ({
+                    ...prev,
+                    [index]: sectionScrollProgress
+                    }));
+                    
+                    // This activeSection logic might be jumpy, but let's keep it
+                    if (sectionTop < viewportHeight / 2 && sectionBottom > viewportHeight / 2) {
+                    setActiveSection(index);
+                    }
+                }
+                }
+            });
+            };
+
+            window.addEventListener('scroll', handleScroll);
+            handleScroll(); // Run on mount
+            return () => window.removeEventListener('scroll', handleScroll);
+        }, []);
+
+        // Intersection Observer for fade-in animations
+        useEffect(() => {
+            const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach(entry => {
+                const id = entry.target.dataset.fadeId;
+                if (entry.isIntersecting) {
+                    setVisibleElements(prev => new Set(prev).add(id));
+                } else {
+                    // NEW: Remove when not intersecting to allow pausing/unloading
+                    setVisibleElements(prev => {
+                    const next = new Set(prev);
+                    next.delete(id);
+                    return next;
+                    });
+                }
+                });
+            },
+            { 
+                threshold: 0.5, // 50% of the item must be visible
+                rootMargin: '0px' 
+            }
+            );
+
+            const elements = document.querySelectorAll('[data-fade-id]');
+            elements.forEach(el => observer.observe(el));
+            
+            return () => elements.forEach(el => observer.disconnect());
+        }, []);
+
+        // Use stubbed components
+        const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } = stubs;
+
+        return (
+            <div style={{ backgroundColor: colors.bg, color: colors.text, fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+            {/* Progress Bar */}
+            <div 
+                style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                height: '4px',
+                width: `${scrollProgress}%`,
+                backgroundColor: colors.accent,
+                zIndex: 100,
+                transition: 'width 0.1s ease-out'
+                }}
+            />
+
+            {/* Section 1: Hero */}
+            <section 
+                ref={el => sectionsRef.current[0] = el}
+                style={{ minHeight: '100vh', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+                {/* Centering wrapper (Change 2) */}
+                <div style={{ maxWidth: '1400px', margin: '0 auto', textAlign: 'center', paddingLeft: '1.5rem', paddingRight: '1.5rem', paddingTop: '5rem', paddingBottom: '5rem' }}>
+                {/* Logos */}
+                <div 
+                    data-fade-id="hero-logos"
+                    style={{
+                    opacity: visibleElements.has('hero-logos') ? 1 : 0,
+                    transform: visibleElements.has('hero-logos') ? 'translateY(0)' : 'translateY(30px)',
+                    transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '32px',
+                    marginBottom: '32px'
+                    }}
+                >
+                    {/* Cohort Logo - REVERTED to placeholder */}
+                    <img 
+                    src="https://i.ibb.co/DfM91VG0/wearecohort-logo.jpg" 
+                    alt="Cohort Logo" 
+                    style={{ width: '140px', height: 'auto', borderRadius: '8px' }}
+                    onError={(e) => { e.target.src = 'https://i.ibb.co/DfM91VG0/wearecohort-logo.jpg'; e.target.onerror = null; }}
+                    />
+                    
+                    <div style={{ fontSize: '24px', color: colors.textMuted }}>×</div>
+                    
+                    {/* Ecosia Logo - REVERTED to placeholder */}
+                    <img 
+                    src="https://yt3.googleusercontent.com/yrpFqU6EcBnJFF_2FbMJy8zWtTyXum3a3CPcAA_ys4ULIrvdkgatiazUEOo2fM7LhtsXzgIr=s900-c-k-c0x00ffffff-no-rj" 
+                    alt="Ecosia Logo" 
+                    style={{ width: '140px', height: 'auto', borderRadius: '8px' }}
+                    onError={(e) => { e.target.src = 'https://drive.google.com/file/d/1J0zy0QkhppqvikDXLfTsKQm9mkyXtm9_/view?usp=sharing'; e.target.onerror = null; }}
+                    />
+                </div>
+
+                <h2 
+                    data-fade-id="hero-subtitle"
+                    style={{
+                    fontSize: '20px',
+                    fontWeight: 600,
+                    color: colors.accent,
+                    marginTop: '16px',
+                    opacity: visibleElements.has('hero-subtitle') ? 1 : 0,
+                    transform: visibleElements.has('hero-subtitle') ? 'translateY(0)' : 'translateY(30px)',
+                    transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.1s'
+                    }}
+                >
+                    Influencer Marketing Case Study
+                </h2>
+
+                <h1 
+                    data-fade-id="hero-title"
+                    style={{
+                    fontSize: 'clamp(40px, 8vw, 96px)',
+                    fontWeight: 900,
+                    lineHeight: 1.1,
+                    marginTop: '24px',
+                    opacity: visibleElements.has('hero-title') ? 1 : 0,
+                    transform: visibleElements.has('hero-title') ? 'translateY(0)' : 'translateY(30px)',
+                    transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.2s'
+                    }}
+                >
+                    From €54 to €23 CPM
+                </h1>
+
+                <p 
+                    data-fade-id="hero-description"
+                    style={{
+                    fontSize: 'clamp(18px, 3vw, 32px)',
+                    color: colors.textMuted,
+                    maxWidth: '900px',
+                    margin: '32px auto 0',
+                    lineHeight: 1.6,
+                    opacity: visibleElements.has('hero-description') ? 1 : 0,
+                    transform: visibleElements.has('hero-description') ? 'translateY(0)' : 'translateY(30px)',
+                    transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.3s'
+                    }}
+                >
+                    How strategic creator selection drove a <span style={{ color: colors.accent, fontWeight: 600 }}>57% cost reduction</span> across European markets
+                </p>
+
+                {/* Key Metrics - UPDATED to 3 boxes + animated numbers */}
+                <div 
+                    data-fade-id="hero-metrics"
+                    style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                    gap: '24px',
+                    maxWidth: '900px', // Back to 900px for 3 items
+                    margin: '48px auto 0',
+                    opacity: visibleElements.has('hero-metrics') ? 1 : 0,
+                    transform: visibleElements.has('hero-metrics') ? 'translateY(0)' : 'translateY(30px)',
+                    transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.4s'
+                    }}
+                >
+                    <div style={{
+                    backgroundColor: colors.bgAlt,
+                    padding: '32px 24px',
+                    borderRadius: '16px',
+                    border: `1px solid ${colors.border}`
+                    }}>
+                    <AnimatedMetric
+                        endValue={1770000}
+                        isVisible={visibleElements.has('hero-metrics')}
+                        formattingFn={(val) => `${(val / 1000000).toFixed(2)}M`}
+                        style={{ fontSize: '48px', fontWeight: 700, color: colors.accent }}
+                    />
+                    <div style={{ fontSize: '14px', color: colors.textMuted, marginTop: '8px' }}>Total Views</div>
+                    </div>
+                    <div style={{
+                    backgroundColor: colors.bgAlt,
+                    padding: '32px 24px',
+                    borderRadius: '16px',
+                    border: `1px solid ${colors.border}`
+                    }}>
+                    <AnimatedMetric
+                        endValue={57}
+                        isVisible={visibleElements.has('hero-metrics')}
+                        suffix="%"
+                        style={{ fontSize: '48px', fontWeight: 700, color: colors.accent }}
+                    />
+                    <div style={{ fontSize: '14px', color: colors.textMuted, marginTop: '8px' }}>Cost Reduction</div>
+                    </div>
+                    <div style={{
+                    backgroundColor: colors.bgAlt,
+                    padding: '32px 24px',
+                    borderRadius: '16px',
+                    border: `1px solid ${colors.border}`
+                    }}>
+                    <AnimatedMetric
+                        endValue={15}
+                        isVisible={visibleElements.has('hero-metrics')}
+                        style={{ fontSize: '48px', fontWeight: 700, color: colors.accent }}
+                    />
+                    <div style={{ fontSize: '14px', color: colors.textMuted, marginTop: '8px' }}>Creators</div>
+                    </div>
+                </div>
+                
+                {/* ADDED Animated Budget Below */}
+                <div 
+                    data-fade-id="hero-budget" // Use the same fade-id to trigger with boxes
+                    style={{
+                    marginTop: '32px',
+                    opacity: visibleElements.has('hero-metrics') ? 1 : 0,
+                    transform: visibleElements.has('hero-metrics') ? 'translateY(0)' : 'translateY(30px)',
+                    transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.6s' // Slightly delayed
+                    }}
+                >
+                    <AnimatedMetric
+                    endValue={196000}
+                    isVisible={visibleElements.has('hero-metrics')}
+                    prefix="$"
+                    formattingFn={(val) => val.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    style={{ fontSize: '56px', fontWeight: 900, color: colors.accent }} // Made bigger
+                    />
+                    <div style={{ fontSize: '16px', color: colors.textMuted, marginTop: '4px' }}>Total Budget Spent</div>
+                </div>
+
+
+                {/* Scroll Indicator */}
+                <div style={{
+                    position: 'absolute',
+                    bottom: '40px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    animation: 'bounce 2s infinite'
+                }}>
+                    <div style={{
+                    width: '24px',
+                    height: '40px',
+                    border: `2px solid ${colors.border}`,
+                    borderRadius: '20px',
+                    padding: '4px',
+                    display: 'flex',
+                    justifyContent: 'center'
+                    }}>
+                    <div style={{
+                        width: '4px',
+                        height: '8px',
+                        backgroundColor: colors.accent,
+                        borderRadius: '4px',
+                        animation: 'scrollDot 2s infinite'
+                    }} />
+                    </div>
+                </div>
+                </div>
+            </section>
+
+            {/* Section 2: The Challenge */}
+            <section 
+                ref={el => sectionsRef.current[1] = el}
+                style={{ minHeight: '100vh', backgroundColor: colors.bgAlt, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+                {/* Centering wrapper (Change 2) */}
+                <div style={{ maxWidth: '1400px', margin: '0 auto', paddingLeft: '1.5rem', paddingRight: '1.5rem', paddingTop: '5rem', paddingBottom: '5rem', width: '100%' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '48px', alignItems: 'center' }}>
+                    <div>
+                    <h2 
+                        data-fade-id="challenge-title"
+                        style={{
+                        fontSize: 'clamp(36px, 6vw, 72px)',
+                        fontWeight: 900,
+                        lineHeight: 1.2,
+                        opacity: visibleElements.has('challenge-title') ? 1 : 0,
+                        transform: visibleElements.has('challenge-title') ? 'translateY(0)' : 'translateY(30px)',
+                        transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+                        }}
+                    >
+                        The Challenge
+                    </h2>
+                    <p 
+                        data-fade-id="challenge-subtitle"
+                        style={{
+                        fontSize: 'clamp(18px, 3vw, 28px)',
+                        color: colors.textMuted,
+                        marginTop: '24px',
+                        lineHeight: 1.6,
+                        opacity: visibleElements.has('challenge-subtitle') ? 1 : 0,
+                        transform: visibleElements.has('challenge-subtitle') ? 'translateY(0)' : 'translateY(30px)',
+                        transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.1s'
+                        }}
+                    >
+                        Breaking into Google-dominated search markets
+                    </p>
+                    </div>
+
+                    {/* Grid centering (Change 1) */}
+                    <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
+                    gap: '24px', 
+                    marginTop: '24px', 
+                    margin: '24px auto 0', 
+                    maxWidth: '1200px', 
+                    justifyItems: 'center' 
+                    }}>
+                    {[
+                        { title: 'Market Reality', icon: '🎯', desc: 'Google dominance across Germany, UK, and France. Switching search engines is like changing your morning coffee.' },
+                        { title: 'Budget Pressure', icon: '💰', desc: '€80k across 6 months, 3 markets, 15 creators. Every euro had to work harder.' },
+                        { title: 'Brand Alignment', icon: '🌱', desc: 'Find creators who authentically embody climate activism beyond "planting trees."' }
+                    ].map((item, i) => (
+                        <div 
+                        key={i}
+                        data-fade-id={`challenge-${i}`}
+                        style={{
+                            backgroundColor: colors.bg,
+                            padding: '32px',
+                            borderRadius: '16px',
+                            border: `1px solid ${colors.border}`,
+                            opacity: visibleElements.has(`challenge-${i}`) ? 1 : 0,
+                            transform: visibleElements.has(`challenge-${i}`) ? 'translateY(0)' : 'translateY(30px)',
+                            transition: `all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) ${0.2 + i * 0.1}s`,
+                            maxWidth: '350px' // Added to constrain card width in grid
+                        }}
+                        >
+                        <div style={{ fontSize: '36px', marginBottom: '16px' }}>{item.icon}</div>
+                        <h3 style={{ fontSize: '20px', fontWeight: 700, color: colors.accent, marginBottom: '12px' }}>
+                            {item.title}
+                        </h3>
+                        <p style={{ fontSize: '16px', color: colors.textMuted, lineHeight: 1.6 }}>
+                            {item.desc}
+                        </p>
+                        </div>
+                    ))}
+                    </div>
+                </div>
+                </div>
+            </section>
+
+            {/* Section 3: Strategic Evolution (Multi-panel sticky) */}
+            <section 
+                ref={el => sectionsRef.current[2] = el}
+                style={{ height: '300vh', position: 'relative' }}
+            >
+                <div style={{
+                position: 'sticky',
+                top: 0,
+                height: '100vh',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden'
+                }}>
+                {/* Panel 1: Initial Test (0-33%) */}
+                <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: (sectionProgress[2] || 0) < 0.33 ? 1 : 0,
+                    transition: 'opacity 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+                    padding: '24px'
+                }}>
+                    <div style={{ maxWidth: '900px', textAlign: 'center' }}>
+                    <h2 style={{ fontSize: 'clamp(36px, 6vw, 72px)', fontWeight: 900, marginBottom: '24px' }}>
+                        Phase 1: Testing
+                    </h2>
+                    <p style={{ fontSize: 'clamp(18px, 3vw, 28px)', color: colors.textMuted, marginBottom: '48px', lineHeight: 1.6 }}>
+                        January started with a performance-focused approach. The data was clear: <span style={{ color: colors.accent, fontWeight: 600 }}>€54 CPM</span>. Unsustainable.
+                    </p>
+                    
+                    <div style={{
+                        backgroundColor: colors.bgAlt,
+                        padding: '32px',
+                        borderRadius: '16px',
+                        border: `2px solid ${colors.warning}`, // Use warning color
+                        maxWidth: '600px',
+                        margin: '0 auto',
+                        textAlign: 'left'
+                    }}>
+                        <h4 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px', color: colors.warning }}>
+                        Early Brief (Aug 2024)
+                        </h4>
+                        <div style={{ display: 'flex', gap: '16px', alignItems: 'start' }}>
+                        <div style={{ fontSize: '40px' }}>❌</div>
+                        <div>
+                            <p style={{ fontSize: '16px', color: colors.textMuted, marginBottom: '8px' }}>
+                            "Use Ecosia at least twice on screen"
+                            </p>
+                            <p style={{ fontSize: '16px', color: colors.textMuted }}>
+                            Prescriptive "day in the life" format
+                            </p>
+                        </div>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+
+                {/* Panel 2: The Pivot (33-66%) */}
+                <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: (sectionProgress[2] || 0) >= 0.33 && (sectionProgress[2] || 0) < 0.66 ? 1 : 0,
+                    transition: 'opacity 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+                    padding: '24px'
+                }}>
+                    <div style={{ maxWidth: '900px', textAlign: 'center' }}>
+                    <h2 style={{ fontSize: 'clamp(36px, 6vw, 72px)', fontWeight: 900, marginBottom: '24px' }}>
+                        The Pivot
+                    </h2>
+                    <p style={{ fontSize: 'clamp(18px, 3vw, 28px)', color: colors.textMuted, marginBottom: '48px', lineHeight: 1.6 }}>
+                        We shifted from performance metrics to brand awareness. The channel wasn't the problem; the strategy was.
+                    </p>
+                    
+                    <div style={{ fontSize: '64px', fontWeight: 900, color: colors.textMuted, marginBottom: '24px' }}>
+                        Performance <span style={{ color: colors.accent }}>→</span> Brand
+                    </div>
+                    
+                    <p style={{ fontSize: '20px', color: colors.textMuted }}>
+                        We didn't need <span style={{ fontWeight: 600, color: colors.text }}>more</span> creators. We needed the <span style={{ fontWeight: 600, color: colors.text }}>right</span> ones.
+                    </p>
+                    </div>
+                </div>
+
+                {/* Panel 3: Partnership (66-100%) */}
+                <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: (sectionProgress[2] || 0) >= 0.66 ? 1 : 0,
+                    transition: 'opacity 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+                    padding: '24px'
+                }}>
+                    <div style={{ maxWidth: '1000px', width: '100%' }}>
+                    <h2 style={{ fontSize: 'clamp(36px, 6vw, 72px)', fontWeight: 900, marginBottom: '24px', textAlign: 'center' }}>
+                        Partnership in Action
+                    </h2>
+                    <p style={{ fontSize: 'clamp(18px, 3vw, 28px)', color: colors.textMuted, marginBottom: '48px', textAlign: 'center', lineHeight: 1.6 }}>
+                        We evolved the brief with Ecosia, building trust through transparency
+                    </p>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+                        {/* Old Way */}
+                        <div style={{
+                        backgroundColor: colors.bgAlt,
+                        padding: '32px',
+                        borderRadius: '16px',
+                        border: `2px solid ${colors.warning}`
+                        }}>
+                        <h4 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px', color: colors.warning }}>
+                            Old Way
+                        </h4>
+                        <p style={{ fontSize: '16px', color: colors.textMuted, textDecoration: 'line-through', marginBottom: '8px' }}>
+                            "Plant trees with your searches"
+                        </p>
+                        <p style={{ fontSize: '16px', color: colors.textMuted, textDecoration: 'line-through' }}>
+                            "Use Ecosia at least twice"
+                        </p>
+                        </div>
+                        
+                        {/* New Way */}
+                        <div style={{
+                        backgroundColor: colors.bgAlt,
+                        padding: '32px',
+                        borderRadius: '16px',
+                        border: `2px solid ${colors.accent}`
+                        }}>
+                        <h4 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px', color: colors.accent }}>
+                            New Way
+                        </h4>
+                        <p style={{ fontSize: '16px', color: colors.text, fontWeight: 600, marginBottom: '8px' }}>
+                            "Be climate active every day"
+                        </p>
+                        <p style={{ fontSize: '16px', color: colors.text, fontWeight: 600 }}>
+                            "Integrate naturally, authentically"
+                        </p>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+                </div>
+            </section>
+
+            {/* Section 4: Results Data (Sticky with animated bars) */}
+            <section 
+                ref={el => sectionsRef.current[3] = el}
+                style={{ height: '200vh', position: 'relative', backgroundColor: colors.bgAlt }}
+            >
+                <div style={{
+                position: 'sticky',
+                top: 0,
+                height: '100vh',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '24px'
+                }}>
+                <div style={{ maxWidth: '1200px', width: '100%' }}>
+                    <h2 
+                    data-fade-id="results-title"
+                    style={{ 
+                        fontSize: 'clamp(36px, 6vw, 72px)', 
+                        fontWeight: 900, 
+                        marginBottom: '16px',
+                        textAlign: 'center',
+                        opacity: visibleElements.has('results-title') ? 1 : 0,
+                        transform: visibleElements.has('results-title') ? 'translateY(0)' : 'translateY(30px)',
+                        transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+                    }}
+                    >
+                    The Data
+                    </h2>
+                    <p 
+                    data-fade-id="results-subtitle"
+                    style={{ 
+                        fontSize: 'clamp(18px, 3vw, 28px)', 
+                        color: colors.textMuted, 
+                        marginBottom: '48px',
+                        textAlign: 'center',
+                        opacity: visibleElements.has('results-subtitle') ? 1 : 0,
+                        transform: visibleElements.has('results-subtitle') ? 'translateY(0)' : 'translateY(30px)',
+                        transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.1s'
+                    }}
+                    >
+                    Month-by-month performance
+                    </p>
+
+                    <div style={{ display: 'grid', gap: '24px' }}>
+                    {monthlyData.map((month, i) => {
+                        // Animate bars based on section scroll progress
+                        const progress = Math.max(0, Math.min(1, ((sectionProgress[3] || 0) - i * 0.1) * 3));
+                        const maxCPM = 110;
+                        const barWidth = (month.cpm / maxCPM) * 100;
+                        
+                        return (
+                        <div key={month.month}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', marginBottom: '8px', flexWrap: 'wrap' }}>
+                            <span style={{ 
+                                fontSize: '18px', 
+                                fontWeight: 600,
+                                color: month.label === 'Breakthrough' ? colors.accent : colors.text
+                            }}>
+                                {month.month} ({month.label})
+                            </span>
+                            <div style={{ textAlign: 'right' }}>
+                                <span style={{ 
+                                fontSize: '20px', 
+                                fontWeight: 700,
+                                color: month.label === 'Breakthrough' ? colors.accent : colors.text
+                                }}>
+                                €{Math.round(month.cpm * progress)}
+                                </span>
+                                <span style={{ fontSize: '14px', color: colors.textMuted }}> CPM</span>
+                                {' / '}
+                                <span style={{ 
+                                fontSize: '20px', 
+                                fontWeight: 700,
+                                color: month.label === 'Breakthrough' ? colors.accent : colors.text
+                                }}>
+                                {Math.round(month.views * progress)}k
+                                </span>
+                                <span style={{ fontSize: '14px', color: colors.textMuted }}> Views</span>
+                            </div>
+                            </div>
+                            <div style={{
+                            width: '100%',
+                            height: '40px',
+                            backgroundColor: colors.bg,
+                            borderRadius: '8px',
+                            overflow: 'hidden',
+                            position: 'relative',
+                            border: `1px solid ${colors.border}`
+                            }}>
+                            <div style={{
+                                position: 'absolute',
+                                left: 0,
+                                top: 0,
+                                height: '100%',
+                                width: `${barWidth * progress}%`,
+                                backgroundColor: month.label === 'Breakthrough' ? colors.accent : (month.label === 'Phase 1' ? colors.warning : colors.textMuted),
+                                borderRadius: '8px',
+                                transition: 'width 1.2s cubic-bezier(0.23, 1, 0.32, 1)'
+                            }} />
+                            </div>
+                        </div>
+                        );
+                    })}
+                    </div>
+                </div>
+                </div>
+            </section>
+
+            {/* Section 5: March Breakthrough */}
+            <section 
+                ref={el => sectionsRef.current[4] = el}
+                style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+                {/* Centering wrapper (Change 2) */}
+                <div style={{ maxWidth: '1400px', margin: '0 auto', paddingLeft: '1.5rem', paddingRight: '1.5rem', paddingTop: '5rem', paddingBottom: '5rem' }}>
+                <h2 
+                    data-fade-id="breakthrough-title"
+                    style={{ 
+                    fontSize: 'clamp(36px, 6vw, 72px)', 
+                    fontWeight: 900, 
+                    marginBottom: '24px',
+                    textAlign: 'center',
+                    opacity: visibleElements.has('breakthrough-title') ? 1 : 0,
+                    transform: visibleElements.has('breakthrough-title') ? 'translateY(0)' : 'translateY(30px)',
+                    transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+                    }}
+                >
+                    March Was the Breakthrough
+                </h2>
+                <p 
+                    data-fade-id="breakthrough-subtitle"
+                    style={{ 
+                    fontSize: 'clamp(18px, 3vw, 28px)', 
+                    color: colors.textMuted, 
+                    marginBottom: '48px',
+                    textAlign: 'center',
+                    maxWidth: '800px',
+                    margin: '0 auto 48px',
+                    opacity: visibleElements.has('breakthrough-subtitle') ? 1 : 0,
+                    transform: visibleElements.has('breakthrough-subtitle') ? 'translateY(0)' : 'translateY(30px)',
+                    transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.1s',
+                    lineHeight: 1.6
+                    }}
+                >
+                    Everything clicked. We found the sweet spot.
+                </p>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '48px' }}>
+                    {/* Before */}
+                    <div 
+                    data-fade-id="breakthrough-before"
+                    style={{
+                        backgroundColor: colors.bgAlt,
+                        padding: '32px',
+                        borderRadius: '16px',
+                        border: `2px solid ${colors.warning}`,
+                        opacity: visibleElements.has('breakthrough-before') ? 1 : 0,
+                        transform: visibleElements.has('breakthrough-before') ? 'translateY(0)' : 'translateY(30px)',
+                        transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.2s'
+                    }}
+                    >
+                    <div style={{ fontSize: '14px', color: colors.warning, fontWeight: 700, marginBottom: '16px' }}>
+                        Phase 1 · January
+                    </div>
+                    <h3 style={{ fontSize: '28px', fontWeight: 700, marginBottom: '24px' }}>
+                        Testing Everything
+                    </h3>
+                    
+                    <div style={{ display: 'grid', gap: '12px', marginBottom: '24px' }}>
+                        {[
+                        { label: 'CPM', value: '€54', color: colors.warning },
+                        { label: 'Views', value: '364k', color: colors.text },
+                        { label: 'Creators', value: '5', color: colors.text }
+                        ].map((stat, i) => (
+                        <div key={i} style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            padding: '12px',
+                            backgroundColor: colors.bg,
+                            borderRadius: '8px'
+                        }}>
+                            <span style={{ color: colors.textMuted }}>{stat.label}</span>
+                            <span style={{ fontSize: '20px', fontWeight: 700, color: stat.color }}>{stat.value}</span>
+                        </div>
+                        ))}
+                    </div>
+
+                    <div style={{ borderTop: `1px solid ${colors.border}`, paddingTop: '16px' }}>
+                        <div style={{ fontSize: '14px', color: colors.textMuted, marginBottom: '8px' }}>Approach:</div>
+                        <ul style={{ fontSize: '14px', color: colors.textMuted, lineHeight: 1.8, paddingLeft: '20px' }}>
+                        <li>Mixed creator tiers</li>
+                        <li>Prescriptive briefs</li>
+                        <li>Performance-first mindset</li>
+                        </ul>
+                    </div>
+                    </div>
+
+                    {/* After */}
+                    <div 
+                    data-fade-id="breakthrough-after"
+                    style={{
+                        backgroundColor: colors.bgAlt,
+                        padding: '32px',
+                        borderRadius: '16px',
+                        border: `2px solid ${colors.accent}`,
+                        opacity: visibleElements.has('breakthrough-after') ? 1 : 0,
+                        transform: visibleElements.has('breakthrough-after') ? 'translateY(0)' : 'translateY(30px)',
+                        transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.3s'
+                    }}
+                    >
+                    <div style={{ fontSize: '14px', color: colors.accent, fontWeight: 700, marginBottom: '16px' }}>
+                        Phase 2 · March
+                    </div>
+                    <h3 style={{ fontSize: '28px', fontWeight: 700, marginBottom: '24px' }}>
+                        Strategic Optimization
+                    </h3>
+                    
+                    <div style={{ display: 'grid', gap: '12px', marginBottom: '24px' }}>
+                        {[
+                        { label: 'CPM', value: '€23', color: colors.accent },
+                        { label: 'Views', value: '603k', color: colors.accent },
+                        { label: 'Creators', value: '2', color: colors.accent }
+                        ].map((stat, i) => (
+                        <div key={i} style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            padding: '12px',
+                            backgroundColor: colors.bg,
+                            borderRadius: '8px'
+                        }}>
+                            <span style={{ color: colors.textMuted }}>{stat.label}</span>
+                            <span style={{ fontSize: '20px', fontWeight: 700, color: stat.color }}>{stat.value}</span>
+                        </div>
+                        ))}
+                    </div>
+
+                    <div style={{ borderTop: `1px solid ${colors.border}`, paddingTop: '16px' }}>
+                        <div style={{ fontSize: '14px', color: colors.accent, marginBottom: '8px' }}>What Changed:</div>
+                        <ul style={{ fontSize: '14px', color: colors.text, lineHeight: 1.8, paddingLeft: '20px' }}>
+                        <li>Mid-tier macro creators (500k+)</li>
+                        <li>Authentic integration</li>
+                        <li>Values alignment focus</li>
+                        </ul>
+                    </div>
+                    </div>
+                </div>
+
+                {/* Why It Worked */}
+                <div 
+                    data-fade-id="breakthrough-why"
+                    style={{
+                    backgroundColor: colors.bgAlt,
+                    padding: '32px',
+                    borderRadius: '16px',
+                    border: `1px solid ${colors.border}`,
+                    opacity: visibleElements.has('breakthrough-why') ? 1 : 0,
+                    transform: visibleElements.has('breakthrough-why') ? 'translateY(0)' : 'translateY(30px)',
+                    transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.4s'
+                    }}
+                >
+                    <h3 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '24px', textAlign: 'center' }}>
+                    Why It Worked
+                    </h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '24px' }}>
+                    {[
+                        { icon: '🎯', title: 'Scale + Efficiency', desc: '500k+ creators delivered massive reach at sustainable costs' },
+                        { icon: '🌱', title: 'Values Alignment', desc: 'Sustainability-focused creators resonated authentically' },
+                        { icon: '🤝', title: 'Trust Signal', desc: 'Established creators added credibility' }
+                    ].map((item, i) => (
+                        <div key={i} style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '36px', marginBottom: '12px' }}>{item.icon}</div>
+                        <h4 style={{ fontSize: '16px', fontWeight: 700, color: colors.accent, marginBottom: '8px' }}>
+                            {item.title}
+                        </h4>
+                        <p style={{ fontSize: '14px', color: colors.textMuted, lineHeight: 1.6 }}>
+                            {item.desc}
+                        </p>
+                        </div>
+                    ))}
+                    </div>
+                </div>
+                </div>
+            </section>
+
+            {/* Section 6: Creator Performance + Campaign Content */}
+            <section 
+                ref={el => sectionsRef.current[5] = el}
+                style={{ minHeight: '100vh', backgroundColor: colors.bgAlt, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+                {/* Centering wrapper (Change 2) */}
+                <div style={{ maxWidth: '1400px', margin: '0 auto', paddingLeft: '1.5rem', paddingRight: '1.5rem', paddingTop: '5rem', paddingBottom: '5rem', width: '100%' }}>
+                <h2 
+                    data-fade-id="creators-title"
+                    style={{ 
+                    fontSize: 'clamp(36px, 6vw, 72px)', 
+                    fontWeight: 900, 
+                    marginBottom: '48px',
+                    textAlign: 'center',
+                    opacity: visibleElements.has('creators-title') ? 1 : 0,
+                    transform: visibleElements.has('creators-title') ? 'translateY(0)' : 'translateY(30px)',
+                    transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+                    }}
+                >
+                    Creator Performance
+                </h2>
+
+                {/* Villaniveus Spotlight - ADDED ANIMATIONS */}
+                <div 
+                    data-fade-id="creators-spotlight"
+                    style={{
+                    background: `linear-gradient(135deg, ${colors.accent}22, ${colors.bgAlt})`,
+                    padding: '48px',
+                    borderRadius: '24px',
+                    border: `2px solid ${colors.accent}`,
+                    marginBottom: '48px',
+                    opacity: visibleElements.has('creators-spotlight') ? 1 : 0,
+                    transform: visibleElements.has('creators-spotlight') ? 'translateY(0)' : 'translateY(30px)',
+                    transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.1s'
+                    }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '24px', marginBottom: '32px', flexWrap: 'wrap' }}>
+                    <div style={{
+                        width: '80px',
+                        height: '80px',
+                        backgroundColor: colors.bg,
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '36px',
+                        flexShrink: 0
+                    }}>
+                        👤
+                    </div>
+                    <div>
+                        <h3 style={{ fontSize: '32px', fontWeight: 700 }}>Villaniveus</h3>
+                        <p style={{ fontSize: '16px', color: colors.accent }}>Top Performer · Macro Creator</p>
+                    </div>
+                    </div>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '24px', marginBottom: '24px' }}>
+                    <div style={{ textAlign: 'center' }}>
+                        <AnimatedMetric
+                        endValue={535000}
+                        isVisible={visibleElements.has('creators-spotlight')}
+                        formattingFn={(val) => `${(val / 1000).toFixed(0)}k`}
+                        style={{ fontSize: '36px', fontWeight: 700, color: colors.accent }}
+                        />
+                        <div style={{ fontSize: '14px', color: colors.textMuted, marginTop: '4px' }}>Total Views</div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                        <AnimatedMetric
+                        endValue={8}
+                        isVisible={visibleElements.has('creators-spotlight')}
+                        suffix="%"
+                        decimals={1}
+                        style={{ fontSize: '36px', fontWeight: 700, color: colors.accent }}
+                        />
+                        <div style={{ fontSize: '14px', color: colors.textMuted, marginTop: '4px' }}>Engagement Rate</div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                        <AnimatedMetric
+                        endValue={2}
+                        isVisible={visibleElements.has('creators-spotlight')}
+                        suffix="x"
+                        style={{ fontSize: '36px', fontWeight: 700, color: colors.accent }}
+                        />
+                        <div style={{ fontSize: '14px', color: colors.textMuted, marginTop: '4px' }}>Campaigns</div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '36px', fontWeight: 700, color: colors.accent }}>✓</div>
+                        <div style={{ fontSize: '14px', color: colors.textMuted, marginTop: '4px' }}>Performance</div>
+                    </div>
+                    </div>
+                    
+                    <p style={{ fontSize: '16px', color: colors.textMuted, lineHeight: 1.6 }}>
+                    Appeared in both January and March campaigns, delivering exceptional engagement both times. 
+                    Proved that macro creators with values alignment are the gold standard.
+                    </p>
+                </div>
+
+                {/* Campaign Content Gallery - UPDATED with thumbnail placeholders */}
+                <div 
+                    data-fade-id="creators-gallery"
+                    style={{
+                    opacity: visibleElements.has('creators-gallery') ? 1 : 0,
+                    transform: visibleElements.has('creators-gallery') ? 'translateY(0)' : 'translateY(30px)',
+                    transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.2s'
+                    }}
+                >
+                    <h3 style={{ fontSize: '28px', fontWeight: 700, marginBottom: '24px', textAlign: 'center' }}>
+                    Campaign Content
+                    </h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '24px' }}>
+                    {campaignContent.map((content, i) => {
+                        // Setup for video observer
+                        const videoId = `video-${content.id}`;
+                        const isVisible = visibleElements.has(videoId);
+
+                        // --- NEW YOUTUBE LINK LOGIC ---
+                        // This logic converts YouTube "watch" links (or "youtu.be") into the correct embed format.
+                        let embedUrl = '';
+                        const placeholderSrc = `https://placehold.co/300x533/3d5345/ffffff?text=${content.creator}+Video`;
+                        
+                        try {
+                        const url = new URL(content.link);
+                        let videoIdParam = '';
+                        if (url.hostname === 'www.youtube.com' || url.hostname === 'youtube.com') {
+                            videoIdParam = url.searchParams.get('v');
+                        } else if (url.hostname === 'youtu.be') {
+                            // Handle youtu.be short links
+                            videoIdParam = url.pathname.slice(1);
+                        }
+
+                        if (videoIdParam) {
+                            // Autoplay, mute, loop, controls, and playlist=VIDEO_ID (needed for loop)
+                            embedUrl = `https://www.youtube.com/embed/${videoIdParam}?autoplay=1&mute=1&loop=1&controls=1&playlist=${videoIdParam}`;
+                        }
+                        } catch (error) {
+                        console.error("Invalid video URL: ", content.link);
+                        // embedUrl remains '', so the placeholder will be shown
+                        }
+                        // --- END NEW LOGIC ---
+
+                        return (
+                        <div 
+                        key={content.id} 
+                        data-fade-id={videoId} // Add fade ID for observer
+                        style={{
+                            backgroundColor: colors.bg,
+                            borderRadius: '16px',
+                            overflow: 'hidden',
+                            border: `1px solid ${colors.border}`,
+                            display: 'flex', 
+                            flexDirection: 'column' 
+                        }}
+                        >
+                        {/* Video/Image Placeholder with Link */}
+                        <div style={{
+                            position: 'relative',
+                            width: '100%',
+                            aspectRatio: '9/16',
+                            backgroundColor: colors.bg,
+                        }}>
+                            {isVisible && embedUrl ? (
+                            // RENDER IFRAME IF VISIBLE and we have a valid YouTube link
+                            <iframe
+                                src={embedUrl}
+                                frameBorder="0"
+                                allow="autoplay; encrypted-media; picture-in-picture"
+                                allowFullScreen
+                                style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                width: '100%',
+                                height: '100%',
+                                // Clicks are allowed
+                                }}
+                                title={content.creator}
+                            />
+                            ) : (
+                            // RENDER PLACEHOLDER IF NOT VISIBLE or if URL is invalid/not YouTube
+                            <>
+                                <img
+                                src={placeholderSrc}
+                                alt={`Thumbnail for ${content.creator}'s video`}
+                                style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'cover',
+                                    display: 'block',
+                                }}
+                                onError={(e) => { e.target.src = `https://placehold.co/300x533/3d5345/c5c5c8?text=Error+Loading+Image`; e.target.onerror = null; }}
+                                />
+                                {/* Play Icon Overlay */}
+                                <div style={{
+                                position: 'absolute',
+                                top: '50%',
+                                left: '50%',
+                                transform: 'translate(-50%, -50%)',
+                                fontSize: '64px',
+                                color: 'rgba(255,255,255,0.8)',
+                                zIndex: 1,
+                                textShadow: '0 0 10px rgba(0,0,0,0.5)',
+                                pointerEvents: 'none'
+                                }}>
+                                ▶️
+                                </div>
+                                {/* Gradient overlay */}
+                                <div style={{
+                                position: 'absolute',
+                                inset: 0,
+                                background: 'linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.6))',
+                                pointerEvents: 'none'
+                                }} />
+                            </>
+                            )}
+                        </div>
+                        
+                        {/* Content Info */}
+                        <div style={{ padding: '16px', marginTop: 'auto' }}>
+                            <h4 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '8px' }}>{content.creator}</h4>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: colors.textMuted }}>
+                            <span>{content.views} views</span>
+                            <span style={{ color: colors.accent }}>{content.er} ER</span>
+                            </div>
+                        </div>
+                        </div>
+                    );
+                    })}
+                    </div>
+                    {/* REMOVED p tag about clicking links */}
+                </div>
+
+                {/* Creator Tier Analysis - UPDATED with Hannah */}
+                <div 
+                    data-fade-id="creators-tiers"
+                    style={{
+                    marginTop: '64px',
+                    opacity: visibleElements.has('creators-tiers') ? 1 : 0,
+                    transform: visibleElements.has('creators-tiers') ? 'translateY(0)' : 'translateY(30px)',
+                    transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.3s'
+                    }}
+                >
+                    <h3 style={{ fontSize: '28px', fontWeight: 700, marginBottom: '24px', textAlign: 'center' }}>
+                    Creator Tier Analysis
+                    </h3>
+                    <div style={{ display: 'grid', gap: '16px' }}>
+                    {creatorTiers.map((tier, i) => (
+                        <div 
+                        key={i}
+                        style={{
+                            backgroundColor: colors.bg,
+                            padding: '24px',
+                            borderRadius: '16px',
+                            border: tier.highlight ? `2px solid ${colors.accent}` : `1px solid ${colors.border}`,
+                            display: 'grid',
+                            gridTemplateColumns: '1fr auto',
+                            gap: '16px',
+                            alignItems: 'center'
+                        }}
+                        >
+                        <div>
+                            <h4 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>{tier.tier}</h4>
+                            <p style={{ fontSize: '14px', color: colors.textMuted }}>Example: {tier.example}</p>
+                        </div>
+                        <div style={{ display: 'flex', gap: '24px', textAlign: 'center' }}>
+                            <div>
+                            <div style={{ 
+                                fontSize: '24px', 
+                                fontWeight: 700, 
+                                color: tier.highlight ? colors.accent : (tier.performance === 'Poor Fit' || tier.performance === 'Expensive' ? colors.warning : colors.text)
+                            }}>
+                                €{tier.cpm}
+                            </div>
+                            <div style={{ fontSize: '12px', color: colors.textMuted }}>CPM</div>
+                            </div>
+                            <div>
+                            <div style={{ fontSize: '16px' }}>
+                                {tier.performance === 'Excellent' && '🌟🌟🌟'}
+                                {tier.performance === 'Very Good' && '🌟🌟'}
+                                {tier.performance === 'Poor Fit' && '⚠️'}
+                                {tier.performance === 'Expensive' && '💸'}
+                            </div>
+                            <div style={{ fontSize: '12px', color: colors.textMuted }}>{tier.performance}</div>
+                            </div>
+                        </div>
+                        </div>
+                    ))}
+                    </div>
+                </div>
+                </div>
+            </section>
+
+            {/* Section 7: Seasonal Insights - ADDED ANIMATIONS */}
+            <section 
+                ref={el => sectionsRef.current[6] = el}
+                style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+                {/* Centering wrapper (Change 2) */}
+                <div style={{ maxWidth: '1400px', margin: '0 auto', paddingLeft: '1.5rem', paddingRight: '1.5rem', paddingTop: '5rem', paddingBottom: '5rem' }}>
+                <h2 
+                    data-fade-id="seasonal-title"
+                    style={{ 
+                    fontSize: 'clamp(36px, 6vw, 72px)', 
+                    fontWeight: 900, 
+                    marginBottom: '24px',
+                    textAlign: 'center',
+                    opacity: visibleElements.has('seasonal-title') ? 1 : 0,
+                    transform: visibleElements.has('seasonal-title') ? 'translateY(0)' : 'translateY(30px)',
+                    transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+                    }}
+                >
+                    Summer Taught Us
+                </h2>
+                <p 
+                    data-fade-id="seasonal-subtitle"
+                    style={{ 
+                    fontSize: 'clamp(18px, 3vw, 28px)', 
+                    color: colors.textMuted, 
+                    marginBottom: '48px',
+                    textAlign: 'center',
+                    opacity: visibleElements.has('seasonal-subtitle') ? 1 : 0,
+                    transform: visibleElements.has('seasonal-subtitle') ? 'translateY(0)' : 'translateY(30px)',
+                    transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.1s',
+                    lineHeight: 1.6
+                    }}
+                >
+                    Seasonality matters more than we expected
+                </p>
+
+                <div 
+                    data-fade-id="seasonal-comparison"
+                    style={{
+                    backgroundColor: colors.bgAlt,
+                    padding: '48px',
+                    borderRadius: '24px',
+                    border: `1px solid ${colors.border}`,
+                    marginBottom: '32px',
+                    opacity: visibleElements.has('seasonal-comparison') ? 1 : 0,
+                    transform: visibleElements.has('seasonal-comparison') ? 'translateY(0)' : 'translateY(30px)',
+                    transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.2s',
+                    maxWidth: '1000px', // Added max-width
+                    margin: '0 auto 32px' // Added margin
+                    }}
+                >
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '48px', marginBottom: '32px' }}>
+                    <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '14px', color: colors.accent, marginBottom: '8px' }}>March Peak</div>
+                        <AnimatedMetric
+                        endValue={603000}
+                        isVisible={visibleElements.has('seasonal-comparison')}
+                        formattingFn={(val) => `${(val / 1000).toFixed(0)}k`}
+                        style={{ fontSize: '56px', fontWeight: 900, color: colors.accent }}
+                        />
+                        <div style={{ fontSize: '14px', color: colors.textMuted }}>views</div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '14px', color: colors.warning, marginBottom: '8px' }}>June Reality</div>
+                        <AnimatedMetric
+                        endValue={217000}
+                        isVisible={visibleElements.has('seasonal-comparison')}
+                        formattingFn={(val) => `${(val / 1000).toFixed(0)}k`}
+                        style={{ fontSize: '56px', fontWeight: 900, color: colors.warning }}
+                        />
+                        <div style={{ fontSize: '14px', color: colors.textMuted }}>views (-64%)</div>
+                    </div>
+                    </div>
+                    
+                    <div style={{ borderTop: `1px solid ${colors.border}`, paddingTop: '24px' }}>
+                    <p style={{ fontSize: '18px', color: colors.textMuted, lineHeight: 1.8, textAlign: 'center' }}>
+                        The summer slump wasn't a failure; it was education in audience cycles. 
+                        Vacation mode, outdoor activities, and reduced screen time fundamentally changed the landscape.
+                    </p>
+                    </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', maxWidth: '1000px', margin: '0 auto' }}>
+                    <div 
+                    data-fade-id="seasonal-challenges"
+                    style={{
+                        backgroundColor: colors.bgAlt,
+                        padding: '32px',
+                        borderRadius: '16px',
+                        border: `2px solid ${colors.warning}`,
+                        opacity: visibleElements.has('seasonal-challenges') ? 1 : 0,
+                        transform: visibleElements.has('seasonal-challenges') ? 'translateY(0)' : 'translateY(30px)',
+                        transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.3s'
+                    }}
+                    >
+                    <h3 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '16px', color: colors.warning }}>
+                        Summer Challenges
+                    </h3>
+                    <ul style={{ fontSize: '15px', color: colors.textMuted, lineHeight: 2, listStyle: 'none', padding: 0 }}>
+                        <li style={{ paddingLeft: '20px', position: 'relative' }}>
+                        <span style={{ position: 'absolute', left: 0 }}>•</span>
+                        70% view decline from peak
+                        </li>
+                        <li style={{ paddingLeft: '20px', position: 'relative' }}>
+                        <span style={{ position: 'absolute', left: 0 }}>•</span>
+                        Increased market competition
+                        </li>
+                        <li style={{ paddingLeft: '20px', position: 'relative' }}>
+                        <span style={{ position: 'absolute', left: 0 }}>•</span>
+                        Audience focus shift to leisure
+                        </li>
+                        <li style={{ paddingLeft: '20px', position: 'relative' }}>
+                        <span style={{ position: 'absolute', left: 0 }}>•</span>
+                        Higher costs per impression
+                        </li>
+                    </ul>
+                    </div>
+
+                    <div 
+                    data-fade-id="seasonal-implications"
+                    style={{
+                        backgroundColor: colors.bgAlt,
+                        padding: '32px',
+                        borderRadius: '16px',
+                        border: `2px solid ${colors.accent}`,
+                        opacity: visibleElements.has('seasonal-implications') ? 1 : 0,
+                        transform: visibleElements.has('seasonal-implications') ? 'translateY(0)' : 'translateY(30px)',
+                        transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.4s'
+                    }}
+                    >
+                    <h3 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '16px', color: colors.accent }}>
+                        Strategic Takeaways
+                    </h3>
+                    <ul style={{ fontSize: '15px', color: colors.text, lineHeight: 2, listStyle: 'none', padding: 0 }}>
+                        <li style={{ paddingLeft: '20px', position: 'relative' }}>
+                        <span style={{ position: 'absolute', left: 0, color: colors.accent }}>✓</span>
+                        Plan around audience cycles
+                        </li>
+                        <li style={{ paddingLeft: '20px', position: 'relative' }}>
+                        <span style={{ position: 'absolute', left: 0, color: colors.accent }}>✓</span>
+                        Test through full year (T3/T4)
+                        </li>
+                        <li style={{ paddingLeft: '20px', position: 'relative' }}>
+                        <span style={{ position: 'absolute', left: 0, color: colors.accent }}>✓</span>
+                        Adjust budgets by season
+                        </li>
+                        <li style={{ paddingLeft: '20px', position: 'relative' }}>
+                        <span style={{ position: 'absolute', left: 0, color: colors.accent }}>✓</span>
+                        Q1-Q2 for awareness building
+                        </li>
+                    </ul>
+                    </div>
+                </div>
+                </div>
+            </section>
+
+            {/* Section 8: Strategic Playbook */}
+            <section 
+                ref={el => sectionsRef.current[7] = el}
+                style={{ minHeight: '100vh', backgroundColor: colors.bgAlt, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+                {/* Centering wrapper (Change 2) */}
+                <div style={{ maxWidth: '1400px', margin: '0 auto', paddingLeft: '1.5rem', paddingRight: '1.5rem', paddingTop: '5rem', paddingBottom: '5rem' }}>
+                <h2 
+                    data-fade-id="playbook-title"
+                    style={{ 
+                    fontSize: 'clamp(36px, 6vw, 72px)', 
+                    fontWeight: 900, 
+                    marginBottom: '24px',
+                    textAlign: 'center',
+                    opacity: visibleElements.has('playbook-title') ? 1 : 0,
+                    transform: visibleElements.has('playbook-title') ? 'translateY(0)' : 'translateY(30px)',
+                    transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+                    }}
+                >
+                    Strategic Playbook
+                </h2>
+                <p 
+                    data-fade-id="playbook-subtitle"
+                    style={{ 
+                    fontSize: 'clamp(18px, 3vw, 28px)', 
+                    color: colors.textMuted, 
+                    marginBottom: '48px',
+                    textAlign: 'center',
+                    opacity: visibleElements.has('playbook-subtitle') ? 1 : 0,
+                    transform: visibleElements.has('playbook-subtitle') ? 'translateY(0)' : 'translateY(30px)',
+                    transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.1s',
+                    lineHeight: 1.6
+                    }}
+                >
+                    What we learned, distilled
+                </p>
+
+                <div style={{ display: 'grid', gap: '24px', maxWidth: '1000px', margin: '0 auto' }}>
+                    {[
+                    {
+                        icon: '🎯',
+                        title: 'Double Down on Macro Creators (500k+)',
+                        desc: 'The data is clear: mid-tier macro creators deliver the best combination of scale, efficiency, and authentic resonance.',
+                        action: 'Target €23-40 CPM range with values-aligned creators'
+                    },
+                    {
+                        icon: '🌱',
+                        title: 'Values Alignment Over Reach',
+                        desc: 'A lifestyle creator with 500k followers delivered 1% ER. A sustainability-focused creator with similar reach delivered 8% ER.',
+                        action: 'Vet for: Past eco-content, audience demographics, engagement quality'
+                    },
+                    {
+                        icon: '📈',
+                        title: 'Position Micro Creators as Amplifiers',
+                        desc: 'At €103 CPM, micro creators cannot be the primary strategy. But they excel at niche storytelling and community depth.',
+                        action: 'Allocate 15-20% of budget for targeted community engagement'
+                    },
+                    {
+                        icon: '🗓️',
+                        title: 'Plan Around Seasonal Cycles',
+                        desc: 'Q1-Q2 for awareness building, adjust expectations for Q3, leverage Q4 for optimization. Never judge without full-year data.',
+                        action: 'Next step: Test T3/T4 to complete the annual picture'
+                    }
+                    ].map((item, i) => (
+                    <div 
+                        key={i}
+                        data-fade-id={`playbook-${i}`}
+                        style={{
+                        backgroundColor: i === 0 ? `${colors.accent}1A` : colors.bg, // Adjusted opacity
+                        padding: '32px',
+                        borderRadius: '16px',
+                        border: i === 0 ? `2px solid ${colors.accent}` : `1px solid ${colors.border}`,
+                        opacity: visibleElements.has(`playbook-${i}`) ? 1 : 0,
+                        transform: visibleElements.has(`playbook-${i}`) ? 'translateY(0)' : 'translateY(30px)',
+                        transition: `all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) ${0.2 + i * 0.1}s`
+                        }}
+                    >
+                        <div style={{ display: 'flex', gap: '24px', alignItems: 'start' }}>
+                        <div style={{ fontSize: '48px', flexShrink: 0, marginTop: '5px' }}>{item.icon}</div>
+                        <div style={{ flex: 1 }}>
+                            <h3 style={{ fontSize: '22px', fontWeight: 700, marginBottom: '12px' }}>
+                            {item.title}
+                            </h3>
+                            <p style={{ fontSize: '16px', color: colors.textMuted, marginBottom: '16px', lineHeight: 1.6 }}>
+                            {item.desc}
+                            </p>
+                            <div style={{
+                            backgroundColor: colors.bgAlt,
+                            padding: '12px 16px',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            color: colors.accent,
+                            border: `1px solid ${colors.border}`
+                            }}>
+                            {item.action}
+                            </div>
+                        </div>
+                        </div>
+                    </div>
+                    ))}
+                </div>
+                </div>
+            </section>
+
+            {/* Section 9: Impact & CTA - ADDED ANIMATIONS */}
+            <section 
+                ref={el => sectionsRef.current[8] = el}
+                style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+                {/* Centering wrapper (Change 2) */}
+                <div style={{ maxWidth: '1400px', margin: '0 auto', paddingLeft: '1.5rem', paddingRight: '1.5rem', paddingTop: '5rem', paddingBottom: '5rem', textAlign: 'center' }}>
+                <h2 
+                    data-fade-id="impact-title"
+                    style={{ 
+                    fontSize: 'clamp(36px, 6vw, 72px)', 
+                    fontWeight: 900, 
+                    marginBottom: '24px',
+                    lineHeight: 1.2,
+                    opacity: visibleElements.has('impact-title') ? 1 : 0,
+                    transform: visibleElements.has('impact-title') ? 'translateY(0)' : 'translateY(30px)',
+                    transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+                    }}
+                >
+                    The Real Win Wasn't Just Cost Reduction
+                </h2>
+                <p 
+                    data-fade-id="impact-subtitle"
+                    style={{ 
+                    fontSize: 'clamp(18px, 3vw, 28px)', 
+                    color: colors.textMuted, 
+                    marginBottom: '48px',
+                    lineHeight: 1.6,
+                    opacity: visibleElements.has('impact-subtitle') ? 1 : 0,
+                    transform: visibleElements.has('impact-subtitle') ? 'translateY(0)' : 'translateY(30px)',
+                    transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.1s',
+                    maxWidth: '900px', // Added
+                    margin: '0 auto 48px' // Added
+                    }}
+                >
+                    It was proving that strategic creator selection, values alignment, and adaptive campaign management 
+                    can break into established markets efficiently
+                </p>
+
+                <div 
+                    data-fade-id="impact-metrics"
+                    style={{
+                    backgroundColor: colors.bgAlt,
+                    padding: '48px',
+                    borderRadius: '24px',
+                    border: `1px solid ${colors.border}`,
+                    marginBottom: '48px',
+                    opacity: visibleElements.has('impact-metrics') ? 1 : 0,
+                    transform: visibleElements.has('impact-metrics') ? 'translateY(0)' : 'translateY(30px)',
+                    transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.2s',
+                    maxWidth: '1000px', // Added
+                    margin: '0 auto 48px' // Added
+                    }}
+                >
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '32px', marginBottom: '32px' }}>
+                    <div>
+                        <AnimatedMetric
+                        endValue={1770000}
+                        isVisible={visibleElements.has('impact-metrics')}
+                        formattingFn={(val) => `${(val / 1000000).toFixed(2)}M`}
+                        style={{ fontSize: '56px', fontWeight: 900, color: colors.accent }}
+                        />
+                        <div style={{ fontSize: '14px', color: colors.textMuted }}>Total reach across EU</div>
+                    </div>
+                    <div>
+                        <AnimatedMetric
+                        endValue={57}
+                        isVisible={visibleElements.has('impact-metrics')}
+                        suffix="%"
+                        style={{ fontSize: '56px', fontWeight: 900, color: colors.accent }}
+                        />
+                        <div style={{ fontSize: '14px', color: colors.textMuted }}>Cost efficiency improvement</div>
+                    </div>
+                    <div>
+                        <AnimatedMetric
+                        endValue={23}
+                        isVisible={visibleElements.has('impact-metrics')}
+                        prefix="€"
+                        style={{ fontSize: '56px', fontWeight: 900, color: colors.accent }}
+                        />
+                        <div style={{ fontSize: '14px', color: colors.textMuted }}>Optimal CPM achieved</div>
+                    </div>
+                    </div>
+                    
+                    <div style={{ borderTop: `1px solid ${colors.border}`, paddingTop: '24px' }}>
+                    <p style={{ fontSize: '18px', color: colors.textMuted, fontStyle: 'italic', lineHeight: 1.8 }}>
+                        "From testing to breakthrough to learning, this campaign showed that data-driven optimization 
+                        and strategic partnership create sustainable growth."
+                    </p>
+                    </div>
+                </div>
+
+                <div 
+                    data-fade-id="impact-cta"
+                    style={{
+                    backgroundColor: colors.bgAlt,
+                    padding: '48px',
+                    borderRadius: '24px',
+                    border: `2px solid ${colors.accent}`,
+                    opacity: visibleElements.has('impact-cta') ? 1 : 0,
+                    transform: visibleElements.has('impact-cta') ? 'translateY(0)' : 'translateY(30px)',
+                    transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.3s',
+                    maxWidth: '1000px', // Added
+                    margin: '0 auto' // Added
+                    }}
+                >
+                    <h3 style={{ fontSize: '28px', fontWeight: 700, marginBottom: '16px' }}>
+                    What Resonated Most With You?
+                    </h3>
+                    <p style={{ fontSize: '16px', color: colors.textMuted, marginBottom: '32px' }}>
+                    Every brand faces different challenges. Let's discuss how these learnings apply to your market.
+                    </p>
+                    <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                    <button style={{
+                        backgroundColor: colors.accent,
+                        color: colors.bg,
+                        padding: '16px 32px',
+                        borderRadius: '12px',
+                        fontSize: '16px',
+                        fontWeight: 700,
+                        border: 'none',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s',
+                    }}
+                    onMouseOver={(e) => e.target.style.backgroundColor = colors.accentDark}
+                    onMouseOut={(e) => e.target.style.backgroundColor = colors.accent}
+                    >
+                        Schedule Discovery Call
+                    </button>
+                    <button style={{
+                        backgroundColor: 'transparent', // Make transparent
+                        color: colors.text,
+                        padding: '16px 32px',
+                        borderRadius: '12px',
+                        fontSize: '16px',
+                        fontWeight: 700,
+                        border: `2px solid ${colors.border}`,
+                        cursor: 'pointer',
+                        transition: 'all 0.3s',
+                    }}
+                    onMouseOver={(e) => { e.target.style.borderColor = colors.accent; e.target.style.color = colors.accent; }}
+                    onMouseOut={(e) => { e.target.style.borderColor = colors.border; e.target.style.color = colors.text; }}
+                    >
+                        Download Case Study
+                    </button>
+                    </div>
+                </div>
+
+                <div style={{ marginTop: '64px', fontSize: '14px', color: colors.textMuted }}>
+                    <p>Cohort × Ecosia · January - June 2025</p>
+                    <p style={{ marginTop: '8px' }}>Strategic influencer marketing for brands that matter</p>
+                </div>
+                </div>
+            </section>
+
+            {/* Inline styles for animations */}
+            <style>{`
+                @keyframes bounce {
+                0%, 100% { transform: translateY(0) translateX(-50%); }
+                50% { transform: translateY(-10px) translateX(-50%); }
+                }
+                @keyframes scrollDot {
+                0% { transform: translateY(0); opacity: 1; }
+                50% { transform: translateY(12px); opacity: 0; }
+                51% { transform: translateY(0px); opacity: 0; }
+                100% { transform: translateY(0); opacity: 1; }
+                }
+            `}</style>
+            </div>
+        );
+        };
+
+        // We removed 'export default App;'
+        
+        // 6. Finally, we mount the <App /> component to the <div id="root">
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
+
