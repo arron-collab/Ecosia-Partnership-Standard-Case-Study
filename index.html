@@ -8,7 +8,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- 2. Load React & ReactDOM -->
-    <!-- We use the "development" version for better error messages. -->
     <script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
     
@@ -16,34 +15,18 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
-        /* This prevents a white flash while the app loads */
         body {
             background-color: #334839;
         }
     </style>
 </head>
 <body>
-    <!-- 4. This is the root element where your React app will be mounted -->
     <div id="root"></div>
-
-    <!-- 5. This script contains your entire React application -->
-    <!-- Note: type="text/babel" tells Babel to transpile this block -->
     <script type="text/babel">
         
-        // We get React's functions from the global 'React' object
-        // instead of using an 'import' statement.
         const { useState, useEffect, useRef } = React;
 
-        // Note: 'recharts' is not available in this environment.
-        // We are using stubs to simulate the components and prevent errors.
-        // import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
-
-        // This component uses recharts, but it's not imported in the React environment.
-        // We'll add stubs for the components used so it renders without error.
-        // In a real React project, you'd install and import 'recharts'.
-
-        const
-        stubs = {
+        const stubs = {
             BarChart: ({ children, ...props }) => <div {...props} data-stub="BarChart">{children}</div>,
             Bar: (props) => <div {...props} data-stub="Bar" />,
             XAxis: (props) => <div {...props} data-stub="XAxis" />,
@@ -55,8 +38,6 @@
             Line: (props) => <div {...props} data-stub="Line" />,
         };
 
-        // --- NEW HOOK ---
-        // Custom hook for counting animations
         const useCountUp = (endValue, duration = 2000, isVisible) => {
         const [count, setCount] = useState(0);
         const frameRef = useRef(null);
@@ -66,7 +47,7 @@
 
         useEffect(() => {
             if (!isVisible) {
-            setCount(0); // Reset when not visible
+            setCount(0);
             startTimeRef.current = null;
             if (frameRef.current) {
                 cancelAnimationFrame(frameRef.current);
@@ -89,7 +70,6 @@
             if (progress < 1) {
                 frameRef.current = requestAnimationFrame(animate);
             } else {
-                // Ensure it ends exactly on the endValue
                 setCount(endValue);
                 startTimeRef.current = null;
             }
@@ -108,15 +88,13 @@
         return count;
         };
 
-        // --- NEW COMPONENT ---
-        // Component to display the animated metric
         const AnimatedMetric = ({ 
         endValue, 
         isVisible, 
         prefix = '', 
         suffix = '', 
         decimals = 0,
-        formattingFn, // Optional custom formatter
+        formattingFn,
         style = {}
         }) => {
         const count = useCountUp(endValue, 2000, isVisible);
@@ -146,52 +124,45 @@
         const sectionsRef = useRef([]);
         const [visibleElements, setVisibleElements] = useState(new Set());
 
-        // Earthy color scheme
         const colors = {
-            bg: '#334839',       // Deep forest green
-            bgAlt: '#3d5345',    // Lighter forest green
-            bgLight: '#BCB88A',   // Warm beige
-            accent: '#5DD25E',    // Bright green (keep)
+            bg: '#334839',
+            bgAlt: '#3d5345',
+            bgLight: '#BCB88A',
+            accent: '#5DD25E',
             accentDark: '#4ab84d',
-            warning: '#d4a574',   // Warm amber (instead of red)
+            warning: '#d4a574',
             warningDark: '#b8916a',
             text: '#ffffff',
-            textMuted: '#c5c5c8', // Slightly adjusted for better contrast
+            textMuted: '#c5c5c8',
             textDark: '#334839',
             border: '#4a5f50'
         };
 
-        // Helper function for responsive text
         const responsiveText = (base, min, max) => `clamp(${min}px, ${base}vw, ${max}px)`;
 
-        // Monthly performance data
+        // UPDATED Monthly performance data with correct values from CSV
         const monthlyData = [
-            { month: 'Jan', views: 364, cpm: 54, er: 2.3, creators: 5, spend: 20, label: 'Phase 1' },
-            { month: 'Mar', views: 603, cpm: 23, er: 3.2, creators: 2, spend: 15, label: 'Breakthrough' },
-            { month: 'Apr', views: 369, cpm: 37, er: 1.7, creators: 2, spend: 15, label: 'Learning' },
-            { month: 'May', views: 217, cpm: 63, er: 3.5, creators: 2, spend: 15, label: 'Learning' },
-            { month: 'Jun', views: 217, cpm: 103, er: 1.3, creators: 3, spend: 15, label: 'Learning' }
+            { month: 'Jan', views: 365, cpm: 57, er: 2.03, creators: 4, spend: 20.8, label: 'Phase 1' },
+            { month: 'Mar', views: 604, cpm: 27, er: 3.21, creators: 2, spend: 16.3, label: 'Breakthrough' },
+            { month: 'Apr', views: 369, cpm: 44, er: 1.75, creators: 2, spend: 16.3, label: 'Learning' },
+            { month: 'May', views: 217, cpm: 75, er: 3.05, creators: 2, spend: 16.3, label: 'Learning' },
+            { month: 'Jun', views: 105, cpm: 156, er: 1.34, creators: 3, spend: 16.3, label: 'Learning' }
         ];
 
-        // Updated creator tiers to replace Carmie with Hannah
+        // UPDATED creator tiers with correct CPM values
         const creatorTiers = [
-            { tier: 'Macro (500k+)', example: 'Villaniveus', cpm: 38, performance: 'Excellent', highlight: true },
-            { tier: 'Mid-tier (100k-500k)', example: 'Yinrun', cpm: 45, performance: 'Very Good' },
-            { tier: 'Lifestyle Generic', example: 'Hannah', cpm: 54, performance: 'Poor Fit' }, // Replaced Carmie
-            { tier: 'Micro (<100k)', example: 'Various', cpm: 103, performance: 'Expensive' }
+            { tier: 'Macro (500k+)', example: 'Villaniveus', cpm: 6, performance: 'Excellent', highlight: true },
+            { tier: 'Mid-tier (100k to 500k)', example: 'Yinrun', cpm: 68, performance: 'Very Good' },
+            { tier: 'Lifestyle Generic', example: 'Hannah', cpm: 54, performance: 'Poor Fit' },
+            { tier: 'Micro (<100k)', example: 'Various', cpm: 160, performance: 'Expensive' }
         ];
 
-        // --- VIDEO LINKS ---
-        // MODIFIED to use YouTube "watch" links.
-        // Paste your YouTube "watch" links here and the code will automatically convert them to embed links.
         const campaignContent = [
-            { id: 1, creator: 'Villaniveus', views: '535k', er: '8%', type: 'video', link: 'https://www.youtube.com/watch?v=PLACEHOLDER_VIDEO_ID_1' }, // Replace with your YouTube "watch" link
-            { id: 2, creator: 'Yinrun', views: '69k', er: '4%', type: 'video', link: 'https://www.youtube.com/watch?v=PLACEHOLDER_VIDEO_ID_2' }, // Replace with your YouTube "watch" link
-            { id: 3, creator: 'Hannah', views: '150k', er: '2.5%', type: 'video', link: 'https://www.youtube.com/watch?v=PLACEHOLDER_VIDEO_ID_3' } // Replace with your YouTube "watch" link
+            { id: 1, creator: 'Villaniveus', views: '535k', er: '2.3%', type: 'video', link: 'https://drive.google.com/file/d/1RmTFM3KXSv9IZtnVOdO6mwTQr2vm9RKd/preview' },
+            { id: 2, creator: 'Yinrun', views: '69k', er: '4.1%', type: 'video', link: 'https://drive.google.com/file/d/182M6x8U6XlwNQLHBXWSQbiqrmypMpenx/preview' },
+            { id: 3, creator: 'Hannah', views: '150k', er: '2.5%', type: 'video', link: 'https://drive.google.com/file/d/1DFnpdAYICoAmVYhOGo2gED2iHRPd9Xnk/preview' }
         ];
 
-
-        // Handle scroll progress
         useEffect(() => {
             const handleScroll = () => {
             const windowHeight = window.innerHeight;
@@ -200,22 +171,16 @@
             const progress = (scrolled / documentHeight) * 100;
             setScrollProgress(progress);
 
-            // Calculate progress within each section
             sectionsRef.current.forEach((section, index) => {
                 if (section) {
                 const rect = section.getBoundingClientRect();
                 const sectionHeight = section.offsetHeight;
                 const viewportHeight = window.innerHeight;
                 
-                // Calculate how far through the section we are
                 const sectionTop = rect.top;
                 const sectionBottom = rect.bottom;
                 
                 if (sectionTop <= viewportHeight && sectionBottom >= 0) {
-                    // This logic calculates progress based on how far the top of the section
-                    // has scrolled past the bottom of the viewport.
-                    // A value of 0 means the top just entered the viewport.
-                    // A value of 1 means the bottom has just left the viewport.
                     const sectionScrollProgress = Math.max(0, Math.min(1, (viewportHeight - sectionTop) / (sectionHeight + viewportHeight)));
                     
                     setSectionProgress(prev => ({
@@ -223,7 +188,6 @@
                     [index]: sectionScrollProgress
                     }));
                     
-                    // This activeSection logic might be jumpy, but let's keep it
                     if (sectionTop < viewportHeight / 2 && sectionBottom > viewportHeight / 2) {
                     setActiveSection(index);
                     }
@@ -233,11 +197,10 @@
             };
 
             window.addEventListener('scroll', handleScroll);
-            handleScroll(); // Run on mount
+            handleScroll();
             return () => window.removeEventListener('scroll', handleScroll);
         }, []);
 
-        // Intersection Observer for fade-in animations
         useEffect(() => {
             const observer = new IntersectionObserver(
             (entries) => {
@@ -246,7 +209,6 @@
                 if (entry.isIntersecting) {
                     setVisibleElements(prev => new Set(prev).add(id));
                 } else {
-                    // NEW: Remove when not intersecting to allow pausing/unloading
                     setVisibleElements(prev => {
                     const next = new Set(prev);
                     next.delete(id);
@@ -256,7 +218,7 @@
                 });
             },
             { 
-                threshold: 0.5, // 50% of the item must be visible
+                threshold: 0.5,
                 rootMargin: '0px' 
             }
             );
@@ -267,12 +229,10 @@
             return () => elements.forEach(el => observer.disconnect());
         }, []);
 
-        // Use stubbed components
         const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } = stubs;
 
         return (
             <div style={{ backgroundColor: colors.bg, color: colors.text, fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
-            {/* Progress Bar */}
             <div 
                 style={{
                 position: 'fixed',
@@ -286,14 +246,12 @@
                 }}
             />
 
-            {/* Section 1: Hero */}
+            {/* Section 1: Hero - UPDATED */}
             <section 
                 ref={el => sectionsRef.current[0] = el}
                 style={{ minHeight: '100vh', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
-                {/* Centering wrapper (Change 2) */}
                 <div style={{ maxWidth: '1400px', margin: '0 auto', textAlign: 'center', paddingLeft: '1.5rem', paddingRight: '1.5rem', paddingTop: '5rem', paddingBottom: '5rem' }}>
-                {/* Logos */}
                 <div 
                     data-fade-id="hero-logos"
                     style={{
@@ -307,7 +265,6 @@
                     marginBottom: '32px'
                     }}
                 >
-                    {/* Cohort Logo - REVERTED to placeholder */}
                     <img 
                     src="https://i.ibb.co/DfM91VG0/wearecohort-logo.jpg" 
                     alt="Cohort Logo" 
@@ -317,7 +274,6 @@
                     
                     <div style={{ fontSize: '24px', color: colors.textMuted }}>×</div>
                     
-                    {/* Ecosia Logo - REVERTED to placeholder */}
                     <img 
                     src="https://yt3.googleusercontent.com/yrpFqU6EcBnJFF_2FbMJy8zWtTyXum3a3CPcAA_ys4ULIrvdkgatiazUEOo2fM7LhtsXzgIr=s900-c-k-c0x00ffffff-no-rj" 
                     alt="Ecosia Logo" 
@@ -353,7 +309,7 @@
                     transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.2s'
                     }}
                 >
-                    From €54 to €23 CPM
+                    From $57 to $27 CPM
                 </h1>
 
                 <p 
@@ -369,17 +325,16 @@
                     transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.3s'
                     }}
                 >
-                    How strategic creator selection drove a <span style={{ color: colors.accent, fontWeight: 600 }}>57% cost reduction</span> across European markets
+                    How strategic creator selection drove a <span style={{ color: colors.accent, fontWeight: 600 }}>53% cost reduction</span> across European markets
                 </p>
 
-                {/* Key Metrics - UPDATED to 3 boxes + animated numbers */}
                 <div 
                     data-fade-id="hero-metrics"
                     style={{
                     display: 'grid',
                     gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
                     gap: '24px',
-                    maxWidth: '900px', // Back to 900px for 3 items
+                    maxWidth: '900px',
                     margin: '48px auto 0',
                     opacity: visibleElements.has('hero-metrics') ? 1 : 0,
                     transform: visibleElements.has('hero-metrics') ? 'translateY(0)' : 'translateY(30px)',
@@ -393,7 +348,7 @@
                     border: `1px solid ${colors.border}`
                     }}>
                     <AnimatedMetric
-                        endValue={1770000}
+                        endValue={3093457}
                         isVisible={visibleElements.has('hero-metrics')}
                         formattingFn={(val) => `${(val / 1000000).toFixed(2)}M`}
                         style={{ fontSize: '48px', fontWeight: 700, color: colors.accent }}
@@ -407,7 +362,7 @@
                     border: `1px solid ${colors.border}`
                     }}>
                     <AnimatedMetric
-                        endValue={57}
+                        endValue={53}
                         isVisible={visibleElements.has('hero-metrics')}
                         suffix="%"
                         style={{ fontSize: '48px', fontWeight: 700, color: colors.accent }}
@@ -421,7 +376,7 @@
                     border: `1px solid ${colors.border}`
                     }}>
                     <AnimatedMetric
-                        endValue={15}
+                        endValue={43}
                         isVisible={visibleElements.has('hero-metrics')}
                         style={{ fontSize: '48px', fontWeight: 700, color: colors.accent }}
                     />
@@ -429,14 +384,13 @@
                     </div>
                 </div>
                 
-                {/* ADDED Animated Budget Below */}
                 <div 
-                    data-fade-id="hero-budget" // Use the same fade-id to trigger with boxes
+                    data-fade-id="hero-budget"
                     style={{
                     marginTop: '32px',
                     opacity: visibleElements.has('hero-metrics') ? 1 : 0,
                     transform: visibleElements.has('hero-metrics') ? 'translateY(0)' : 'translateY(30px)',
-                    transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.6s' // Slightly delayed
+                    transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.6s'
                     }}
                 >
                     <AnimatedMetric
@@ -444,13 +398,11 @@
                     isVisible={visibleElements.has('hero-metrics')}
                     prefix="$"
                     formattingFn={(val) => val.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                    style={{ fontSize: '56px', fontWeight: 900, color: colors.accent }} // Made bigger
+                    style={{ fontSize: '56px', fontWeight: 900, color: colors.accent }}
                     />
                     <div style={{ fontSize: '16px', color: colors.textMuted, marginTop: '4px' }}>Total Budget Spent</div>
                 </div>
 
-
-                {/* Scroll Indicator */}
                 <div style={{
                     position: 'absolute',
                     bottom: '40px',
@@ -479,12 +431,11 @@
                 </div>
             </section>
 
-            {/* Section 2: The Challenge */}
+            {/* Section 2: The Challenge - UPDATED */}
             <section 
                 ref={el => sectionsRef.current[1] = el}
                 style={{ minHeight: '100vh', backgroundColor: colors.bgAlt, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
-                {/* Centering wrapper (Change 2) */}
                 <div style={{ maxWidth: '1400px', margin: '0 auto', paddingLeft: '1.5rem', paddingRight: '1.5rem', paddingTop: '5rem', paddingBottom: '5rem', width: '100%' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '48px', alignItems: 'center' }}>
                     <div>
@@ -517,7 +468,6 @@
                     </p>
                     </div>
 
-                    {/* Grid centering (Change 1) */}
                     <div style={{ 
                     display: 'grid', 
                     gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
@@ -529,7 +479,7 @@
                     }}>
                     {[
                         { title: 'Market Reality', icon: '🎯', desc: 'Google dominance across Germany, UK, and France. Switching search engines is like changing your morning coffee.' },
-                        { title: 'Budget Pressure', icon: '💰', desc: '€80k across 6 months, 3 markets, 15 creators. Every euro had to work harder.' },
+                        { title: 'Budget Pressure', icon: '💰', desc: '$196k across 8 months, 3 markets, 43 creators. Every dollar had to work harder.' },
                         { title: 'Brand Alignment', icon: '🌱', desc: 'Find creators who authentically embody climate activism beyond "planting trees."' }
                     ].map((item, i) => (
                         <div 
@@ -543,7 +493,7 @@
                             opacity: visibleElements.has(`challenge-${i}`) ? 1 : 0,
                             transform: visibleElements.has(`challenge-${i}`) ? 'translateY(0)' : 'translateY(30px)',
                             transition: `all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) ${0.2 + i * 0.1}s`,
-                            maxWidth: '350px' // Added to constrain card width in grid
+                            maxWidth: '350px'
                         }}
                         >
                         <div style={{ fontSize: '36px', marginBottom: '16px' }}>{item.icon}</div>
@@ -560,7 +510,7 @@
                 </div>
             </section>
 
-            {/* Section 3: Strategic Evolution (Multi-panel sticky) */}
+            {/* Section 3: Strategic Evolution - UPDATED */}
             <section 
                 ref={el => sectionsRef.current[2] = el}
                 style={{ height: '300vh', position: 'relative' }}
@@ -574,7 +524,6 @@
                 justifyContent: 'center',
                 overflow: 'hidden'
                 }}>
-                {/* Panel 1: Initial Test (0-33%) */}
                 <div style={{
                     position: 'absolute',
                     inset: 0,
@@ -590,14 +539,14 @@
                         Phase 1: Testing
                     </h2>
                     <p style={{ fontSize: 'clamp(18px, 3vw, 28px)', color: colors.textMuted, marginBottom: '48px', lineHeight: 1.6 }}>
-                        January started with a performance-focused approach. The data was clear: <span style={{ color: colors.accent, fontWeight: 600 }}>€54 CPM</span>. Unsustainable.
+                        January started with a performance-focused approach. The data was clear: <span style={{ color: colors.accent, fontWeight: 600 }}>$57 CPM</span>. Unsustainable.
                     </p>
                     
                     <div style={{
                         backgroundColor: colors.bgAlt,
                         padding: '32px',
                         borderRadius: '16px',
-                        border: `2px solid ${colors.warning}`, // Use warning color
+                        border: `2px solid ${colors.warning}`,
                         maxWidth: '600px',
                         margin: '0 auto',
                         textAlign: 'left'
@@ -620,7 +569,6 @@
                     </div>
                 </div>
 
-                {/* Panel 2: The Pivot (33-66%) */}
                 <div style={{
                     position: 'absolute',
                     inset: 0,
@@ -649,7 +597,6 @@
                     </div>
                 </div>
 
-                {/* Panel 3: Partnership (66-100%) */}
                 <div style={{
                     position: 'absolute',
                     inset: 0,
@@ -669,7 +616,6 @@
                     </p>
                     
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
-                        {/* Old Way */}
                         <div style={{
                         backgroundColor: colors.bgAlt,
                         padding: '32px',
@@ -687,7 +633,6 @@
                         </p>
                         </div>
                         
-                        {/* New Way */}
                         <div style={{
                         backgroundColor: colors.bgAlt,
                         padding: '32px',
@@ -710,7 +655,7 @@
                 </div>
             </section>
 
-            {/* Section 4: Results Data (Sticky with animated bars) */}
+            {/* Section 4: Results Data - UPDATED */}
             <section 
                 ref={el => sectionsRef.current[3] = el}
                 style={{ height: '200vh', position: 'relative', backgroundColor: colors.bgAlt }}
@@ -756,9 +701,8 @@
 
                     <div style={{ display: 'grid', gap: '24px' }}>
                     {monthlyData.map((month, i) => {
-                        // Animate bars based on section scroll progress
                         const progress = Math.max(0, Math.min(1, ((sectionProgress[3] || 0) - i * 0.1) * 3));
-                        const maxCPM = 110;
+                        const maxCPM = 180;
                         const barWidth = (month.cpm / maxCPM) * 100;
                         
                         return (
@@ -777,7 +721,7 @@
                                 fontWeight: 700,
                                 color: month.label === 'Breakthrough' ? colors.accent : colors.text
                                 }}>
-                                €{Math.round(month.cpm * progress)}
+                                ${Math.round(month.cpm * progress)}
                                 </span>
                                 <span style={{ fontSize: '14px', color: colors.textMuted }}> CPM</span>
                                 {' / '}
@@ -819,12 +763,11 @@
                 </div>
             </section>
 
-            {/* Section 5: March Breakthrough */}
+            {/* Section 5: March Breakthrough - UPDATED */}
             <section 
                 ref={el => sectionsRef.current[4] = el}
                 style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
-                {/* Centering wrapper (Change 2) */}
                 <div style={{ maxWidth: '1400px', margin: '0 auto', paddingLeft: '1.5rem', paddingRight: '1.5rem', paddingTop: '5rem', paddingBottom: '5rem' }}>
                 <h2 
                     data-fade-id="breakthrough-title"
@@ -859,7 +802,6 @@
                 </p>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '48px' }}>
-                    {/* Before */}
                     <div 
                     data-fade-id="breakthrough-before"
                     style={{
@@ -881,9 +823,9 @@
                     
                     <div style={{ display: 'grid', gap: '12px', marginBottom: '24px' }}>
                         {[
-                        { label: 'CPM', value: '€54', color: colors.warning },
-                        { label: 'Views', value: '364k', color: colors.text },
-                        { label: 'Creators', value: '5', color: colors.text }
+                        { label: 'CPM', value: '$57', color: colors.warning },
+                        { label: 'Views', value: '365k', color: colors.text },
+                        { label: 'Creators', value: '4', color: colors.text }
                         ].map((stat, i) => (
                         <div key={i} style={{
                             display: 'flex',
@@ -908,7 +850,6 @@
                     </div>
                     </div>
 
-                    {/* After */}
                     <div 
                     data-fade-id="breakthrough-after"
                     style={{
@@ -930,8 +871,8 @@
                     
                     <div style={{ display: 'grid', gap: '12px', marginBottom: '24px' }}>
                         {[
-                        { label: 'CPM', value: '€23', color: colors.accent },
-                        { label: 'Views', value: '603k', color: colors.accent },
+                        { label: 'CPM', value: '$27', color: colors.accent },
+                        { label: 'Views', value: '604k', color: colors.accent },
                         { label: 'Creators', value: '2', color: colors.accent }
                         ].map((stat, i) => (
                         <div key={i} style={{
@@ -958,7 +899,6 @@
                     </div>
                 </div>
 
-                {/* Why It Worked */}
                 <div 
                     data-fade-id="breakthrough-why"
                     style={{
@@ -995,12 +935,11 @@
                 </div>
             </section>
 
-            {/* Section 6: Creator Performance + Campaign Content */}
+            {/* Section 6: Creator Performance - UPDATED */}
             <section 
                 ref={el => sectionsRef.current[5] = el}
                 style={{ minHeight: '100vh', backgroundColor: colors.bgAlt, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
-                {/* Centering wrapper (Change 2) */}
                 <div style={{ maxWidth: '1400px', margin: '0 auto', paddingLeft: '1.5rem', paddingRight: '1.5rem', paddingTop: '5rem', paddingBottom: '5rem', width: '100%' }}>
                 <h2 
                     data-fade-id="creators-title"
@@ -1017,7 +956,6 @@
                     Creator Performance
                 </h2>
 
-                {/* Villaniveus Spotlight - ADDED ANIMATIONS */}
                 <div 
                     data-fade-id="creators-spotlight"
                     style={{
@@ -1032,12 +970,28 @@
                     }}
                 >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '24px', marginBottom: '32px', flexWrap: 'wrap' }}>
+                    <img 
+                        src="villaniveus.jpg"
+                        alt="Villaniveus"
+                        style={{
+                            width: '80px',
+                            height: '80px',
+                            borderRadius: '50%',
+                            objectFit: 'cover',
+                            flexShrink: 0,
+                            border: `2px solid ${colors.accent}`
+                        }}
+                        onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'flex';
+                        }}
+                    />
                     <div style={{
                         width: '80px',
                         height: '80px',
                         backgroundColor: colors.bg,
                         borderRadius: '50%',
-                        display: 'flex',
+                        display: 'none',
                         alignItems: 'center',
                         justifyContent: 'center',
                         fontSize: '36px',
@@ -1063,7 +1017,7 @@
                     </div>
                     <div style={{ textAlign: 'center' }}>
                         <AnimatedMetric
-                        endValue={8}
+                        endValue={2.3}
                         isVisible={visibleElements.has('creators-spotlight')}
                         suffix="%"
                         decimals={1}
@@ -1092,7 +1046,6 @@
                     </p>
                 </div>
 
-                {/* Campaign Content Gallery - UPDATED with thumbnail placeholders */}
                 <div 
                     data-fade-id="creators-gallery"
                     style={{
@@ -1106,39 +1059,40 @@
                     </h3>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '24px' }}>
                     {campaignContent.map((content, i) => {
-                        // Setup for video observer
                         const videoId = `video-${content.id}`;
                         const isVisible = visibleElements.has(videoId);
 
-                        // --- NEW YOUTUBE LINK LOGIC ---
-                        // This logic converts YouTube "watch" links (or "youtu.be") into the correct embed format.
                         let embedUrl = '';
                         const placeholderSrc = `https://placehold.co/300x533/3d5345/ffffff?text=${content.creator}+Video`;
                         
                         try {
                         const url = new URL(content.link);
-                        let videoIdParam = '';
-                        if (url.hostname === 'www.youtube.com' || url.hostname === 'youtube.com') {
-                            videoIdParam = url.searchParams.get('v');
+                        
+                        // Handle Google Drive URLs
+                        if (url.hostname === 'drive.google.com') {
+                            // Link is already in preview format, use it directly
+                            embedUrl = content.link;
+                        } 
+                        // Handle YouTube URLs
+                        else if (url.hostname === 'www.youtube.com' || url.hostname === 'youtube.com') {
+                            const videoIdParam = url.searchParams.get('v');
+                            if (videoIdParam) {
+                                embedUrl = `https://www.youtube.com/embed/${videoIdParam}?autoplay=1&mute=1&loop=1&controls=1&playlist=${videoIdParam}`;
+                            }
                         } else if (url.hostname === 'youtu.be') {
-                            // Handle youtu.be short links
-                            videoIdParam = url.pathname.slice(1);
-                        }
-
-                        if (videoIdParam) {
-                            // Autoplay, mute, loop, controls, and playlist=VIDEO_ID (needed for loop)
-                            embedUrl = `https://www.youtube.com/embed/${videoIdParam}?autoplay=1&mute=1&loop=1&controls=1&playlist=${videoIdParam}`;
+                            const videoIdParam = url.pathname.slice(1);
+                            if (videoIdParam) {
+                                embedUrl = `https://www.youtube.com/embed/${videoIdParam}?autoplay=1&mute=1&loop=1&controls=1&playlist=${videoIdParam}`;
+                            }
                         }
                         } catch (error) {
                         console.error("Invalid video URL: ", content.link);
-                        // embedUrl remains '', so the placeholder will be shown
                         }
-                        // --- END NEW LOGIC ---
 
                         return (
                         <div 
                         key={content.id} 
-                        data-fade-id={videoId} // Add fade ID for observer
+                        data-fade-id={videoId}
                         style={{
                             backgroundColor: colors.bg,
                             borderRadius: '16px',
@@ -1148,7 +1102,6 @@
                             flexDirection: 'column' 
                         }}
                         >
-                        {/* Video/Image Placeholder with Link */}
                         <div style={{
                             position: 'relative',
                             width: '100%',
@@ -1156,7 +1109,6 @@
                             backgroundColor: colors.bg,
                         }}>
                             {isVisible && embedUrl ? (
-                            // RENDER IFRAME IF VISIBLE and we have a valid YouTube link
                             <iframe
                                 src={embedUrl}
                                 frameBorder="0"
@@ -1168,12 +1120,10 @@
                                 left: 0,
                                 width: '100%',
                                 height: '100%',
-                                // Clicks are allowed
                                 }}
                                 title={content.creator}
                             />
                             ) : (
-                            // RENDER PLACEHOLDER IF NOT VISIBLE or if URL is invalid/not YouTube
                             <>
                                 <img
                                 src={placeholderSrc}
@@ -1186,7 +1136,6 @@
                                 }}
                                 onError={(e) => { e.target.src = `https://placehold.co/300x533/3d5345/c5c5c8?text=Error+Loading+Image`; e.target.onerror = null; }}
                                 />
-                                {/* Play Icon Overlay */}
                                 <div style={{
                                 position: 'absolute',
                                 top: '50%',
@@ -1200,7 +1149,6 @@
                                 }}>
                                 ▶️
                                 </div>
-                                {/* Gradient overlay */}
                                 <div style={{
                                 position: 'absolute',
                                 inset: 0,
@@ -1211,7 +1159,6 @@
                             )}
                         </div>
                         
-                        {/* Content Info */}
                         <div style={{ padding: '16px', marginTop: 'auto' }}>
                             <h4 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '8px' }}>{content.creator}</h4>
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: colors.textMuted }}>
@@ -1223,10 +1170,8 @@
                     );
                     })}
                     </div>
-                    {/* REMOVED p tag about clicking links */}
                 </div>
 
-                {/* Creator Tier Analysis - UPDATED with Hannah */}
                 <div 
                     data-fade-id="creators-tiers"
                     style={{
@@ -1265,7 +1210,7 @@
                                 fontWeight: 700, 
                                 color: tier.highlight ? colors.accent : (tier.performance === 'Poor Fit' || tier.performance === 'Expensive' ? colors.warning : colors.text)
                             }}>
-                                €{tier.cpm}
+                                ${tier.cpm}
                             </div>
                             <div style={{ fontSize: '12px', color: colors.textMuted }}>CPM</div>
                             </div>
@@ -1286,12 +1231,11 @@
                 </div>
             </section>
 
-            {/* Section 7: Seasonal Insights - ADDED ANIMATIONS */}
+            {/* Section 7: Seasonal Insights - UPDATED WITH PDF LEARNINGS */}
             <section 
                 ref={el => sectionsRef.current[6] = el}
                 style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
-                {/* Centering wrapper (Change 2) */}
                 <div style={{ maxWidth: '1400px', margin: '0 auto', paddingLeft: '1.5rem', paddingRight: '1.5rem', paddingTop: '5rem', paddingBottom: '5rem' }}>
                 <h2 
                     data-fade-id="seasonal-title"
@@ -1320,7 +1264,7 @@
                     lineHeight: 1.6
                     }}
                 >
-                    Seasonality matters more than we expected
+                    When strategy and seasonality collided
                 </p>
 
                 <div 
@@ -1334,15 +1278,15 @@
                     opacity: visibleElements.has('seasonal-comparison') ? 1 : 0,
                     transform: visibleElements.has('seasonal-comparison') ? 'translateY(0)' : 'translateY(30px)',
                     transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.2s',
-                    maxWidth: '1000px', // Added max-width
-                    margin: '0 auto 32px' // Added margin
+                    maxWidth: '1000px',
+                    margin: '0 auto 32px'
                     }}
                 >
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '48px', marginBottom: '32px' }}>
                     <div style={{ textAlign: 'center' }}>
                         <div style={{ fontSize: '14px', color: colors.accent, marginBottom: '8px' }}>March Peak</div>
                         <AnimatedMetric
-                        endValue={603000}
+                        endValue={604000}
                         isVisible={visibleElements.has('seasonal-comparison')}
                         formattingFn={(val) => `${(val / 1000).toFixed(0)}k`}
                         style={{ fontSize: '56px', fontWeight: 900, color: colors.accent }}
@@ -1352,24 +1296,24 @@
                     <div style={{ textAlign: 'center' }}>
                         <div style={{ fontSize: '14px', color: colors.warning, marginBottom: '8px' }}>June Reality</div>
                         <AnimatedMetric
-                        endValue={217000}
+                        endValue={105000}
                         isVisible={visibleElements.has('seasonal-comparison')}
                         formattingFn={(val) => `${(val / 1000).toFixed(0)}k`}
                         style={{ fontSize: '56px', fontWeight: 900, color: colors.warning }}
                         />
-                        <div style={{ fontSize: '14px', color: colors.textMuted }}>views (-64%)</div>
+                        <div style={{ fontSize: '14px', color: colors.textMuted }}>views (-83%)</div>
                     </div>
                     </div>
                     
                     <div style={{ borderTop: `1px solid ${colors.border}`, paddingTop: '24px' }}>
                     <p style={{ fontSize: '18px', color: colors.textMuted, lineHeight: 1.8, textAlign: 'center' }}>
-                        The summer slump wasn't a failure; it was education in audience cycles. 
-                        Vacation mode, outdoor activities, and reduced screen time fundamentally changed the landscape.
+                        June became a double experiment: testing micro creators while entering peak summer distraction. 
+                        The result? Two compounding challenges that revealed critical insights about creator strategy and timing.
                     </p>
                     </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', maxWidth: '1000px', margin: '0 auto' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', maxWidth: '1000px', margin: '0 auto 48px' }}>
                     <div 
                     data-fade-id="seasonal-challenges"
                     style={{
@@ -1383,24 +1327,24 @@
                     }}
                     >
                     <h3 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '16px', color: colors.warning }}>
-                        Summer Challenges
+                        The Dual Challenge
                     </h3>
                     <ul style={{ fontSize: '15px', color: colors.textMuted, lineHeight: 2, listStyle: 'none', padding: 0 }}>
                         <li style={{ paddingLeft: '20px', position: 'relative' }}>
                         <span style={{ position: 'absolute', left: 0 }}>•</span>
-                        70% view decline from peak
+                        Seasonal audience distraction
                         </li>
                         <li style={{ paddingLeft: '20px', position: 'relative' }}>
                         <span style={{ position: 'absolute', left: 0 }}>•</span>
-                        Increased market competition
+                        Micro creator experiment underperformed
                         </li>
                         <li style={{ paddingLeft: '20px', position: 'relative' }}>
                         <span style={{ position: 'absolute', left: 0 }}>•</span>
-                        Audience focus shift to leisure
+                        Content lacked traction vs. macro creators
                         </li>
                         <li style={{ paddingLeft: '20px', position: 'relative' }}>
                         <span style={{ position: 'absolute', left: 0 }}>•</span>
-                        Higher costs per impression
+                        Engagement quality dropped significantly
                         </li>
                     </ul>
                     </div>
@@ -1418,37 +1362,61 @@
                     }}
                     >
                     <h3 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '16px', color: colors.accent }}>
-                        Strategic Takeaways
+                        Strategic Clarity
                     </h3>
                     <ul style={{ fontSize: '15px', color: colors.text, lineHeight: 2, listStyle: 'none', padding: 0 }}>
                         <li style={{ paddingLeft: '20px', position: 'relative' }}>
                         <span style={{ position: 'absolute', left: 0, color: colors.accent }}>✓</span>
-                        Plan around audience cycles
+                        Macro creators cut through saturation
                         </li>
                         <li style={{ paddingLeft: '20px', position: 'relative' }}>
                         <span style={{ position: 'absolute', left: 0, color: colors.accent }}>✓</span>
-                        Test through full year (T3/T4)
+                        Micro = niche amplifiers, not primary drivers
                         </li>
                         <li style={{ paddingLeft: '20px', position: 'relative' }}>
                         <span style={{ position: 'absolute', left: 0, color: colors.accent }}>✓</span>
-                        Adjust budgets by season
+                        Test full annual cycle for true insights
                         </li>
                         <li style={{ paddingLeft: '20px', position: 'relative' }}>
                         <span style={{ position: 'absolute', left: 0, color: colors.accent }}>✓</span>
-                        Q1-Q2 for awareness building
+                        Q1 to Q2 investment, Q3 format refresh needed
                         </li>
                     </ul>
                     </div>
                 </div>
+
+                <div 
+                    data-fade-id="seasonal-insight"
+                    style={{
+                    backgroundColor: colors.bg,
+                    padding: '32px',
+                    borderRadius: '16px',
+                    border: `1px solid ${colors.border}`,
+                    maxWidth: '1000px',
+                    margin: '0 auto',
+                    opacity: visibleElements.has('seasonal-insight') ? 1 : 0,
+                    transform: visibleElements.has('seasonal-insight') ? 'translateY(0)' : 'translateY(30px)',
+                    transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.5s'
+                    }}
+                >
+                    <h4 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '12px', color: colors.accent }}>
+                    The Real Learning
+                    </h4>
+                    <p style={{ fontSize: '16px', color: colors.textMuted, lineHeight: 1.8 }}>
+                    June wasn't a failure; it was invaluable data. Testing micro creators during summer revealed that 
+                    they can't sustain momentum during seasonal dips. Meanwhile, macro creators with strong values alignment 
+                    proved they can weather audience cycles better. Without fresh formats or larger voices, 
+                    even solid investment struggles in summer months.
+                    </p>
+                </div>
                 </div>
             </section>
 
-            {/* Section 8: Strategic Playbook */}
+            {/* Section 8: Strategic Playbook - UPDATED */}
             <section 
                 ref={el => sectionsRef.current[7] = el}
                 style={{ minHeight: '100vh', backgroundColor: colors.bgAlt, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
-                {/* Centering wrapper (Change 2) */}
                 <div style={{ maxWidth: '1400px', margin: '0 auto', paddingLeft: '1.5rem', paddingRight: '1.5rem', paddingTop: '5rem', paddingBottom: '5rem' }}>
                 <h2 
                     data-fade-id="playbook-title"
@@ -1486,24 +1454,24 @@
                         icon: '🎯',
                         title: 'Double Down on Macro Creators (500k+)',
                         desc: 'The data is clear: mid-tier macro creators deliver the best combination of scale, efficiency, and authentic resonance.',
-                        action: 'Target €23-40 CPM range with values-aligned creators'
+                        action: 'Target $6 to $27 CPM range with values-aligned creators'
                     },
                     {
                         icon: '🌱',
                         title: 'Values Alignment Over Reach',
-                        desc: 'A lifestyle creator with 500k followers delivered 1% ER. A sustainability-focused creator with similar reach delivered 8% ER.',
+                        desc: 'A lifestyle creator with 500k followers delivered 1% ER. A sustainability-focused creator with similar reach delivered 2.3% ER.',
                         action: 'Vet for: Past eco-content, audience demographics, engagement quality'
                     },
                     {
                         icon: '📈',
                         title: 'Position Micro Creators as Amplifiers',
-                        desc: 'At €103 CPM, micro creators cannot be the primary strategy. But they excel at niche storytelling and community depth.',
-                        action: 'Allocate 15-20% of budget for targeted community engagement'
+                        desc: 'At $160 CPM, micro creators cannot be the primary strategy. But they excel at niche storytelling and community depth.',
+                        action: 'Allocate 15% to 20% of budget for targeted community engagement'
                     },
                     {
                         icon: '🗓️',
                         title: 'Plan Around Seasonal Cycles',
-                        desc: 'Q1-Q2 for awareness building, adjust expectations for Q3, leverage Q4 for optimization. Never judge without full-year data.',
+                        desc: 'Q1 to Q2 for awareness building, adjust expectations for Q3, leverage Q4 for optimization. Never judge without full-year data.',
                         action: 'Next step: Test T3/T4 to complete the annual picture'
                     }
                     ].map((item, i) => (
@@ -1511,7 +1479,7 @@
                         key={i}
                         data-fade-id={`playbook-${i}`}
                         style={{
-                        backgroundColor: i === 0 ? `${colors.accent}1A` : colors.bg, // Adjusted opacity
+                        backgroundColor: i === 0 ? `${colors.accent}1A` : colors.bg,
                         padding: '32px',
                         borderRadius: '16px',
                         border: i === 0 ? `2px solid ${colors.accent}` : `1px solid ${colors.border}`,
@@ -1547,12 +1515,11 @@
                 </div>
             </section>
 
-            {/* Section 9: Impact & CTA - ADDED ANIMATIONS */}
+            {/* Section 9: Impact & CTA - UPDATED */}
             <section 
                 ref={el => sectionsRef.current[8] = el}
                 style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
-                {/* Centering wrapper (Change 2) */}
                 <div style={{ maxWidth: '1400px', margin: '0 auto', paddingLeft: '1.5rem', paddingRight: '1.5rem', paddingTop: '5rem', paddingBottom: '5rem', textAlign: 'center' }}>
                 <h2 
                     data-fade-id="impact-title"
@@ -1578,8 +1545,8 @@
                     opacity: visibleElements.has('impact-subtitle') ? 1 : 0,
                     transform: visibleElements.has('impact-subtitle') ? 'translateY(0)' : 'translateY(30px)',
                     transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.1s',
-                    maxWidth: '900px', // Added
-                    margin: '0 auto 48px' // Added
+                    maxWidth: '900px',
+                    margin: '0 auto 48px'
                     }}
                 >
                     It was proving that strategic creator selection, values alignment, and adaptive campaign management 
@@ -1597,14 +1564,14 @@
                     opacity: visibleElements.has('impact-metrics') ? 1 : 0,
                     transform: visibleElements.has('impact-metrics') ? 'translateY(0)' : 'translateY(30px)',
                     transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.2s',
-                    maxWidth: '1000px', // Added
-                    margin: '0 auto 48px' // Added
+                    maxWidth: '1000px',
+                    margin: '0 auto 48px'
                     }}
                 >
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '32px', marginBottom: '32px' }}>
                     <div>
                         <AnimatedMetric
-                        endValue={1770000}
+                        endValue={3093457}
                         isVisible={visibleElements.has('impact-metrics')}
                         formattingFn={(val) => `${(val / 1000000).toFixed(2)}M`}
                         style={{ fontSize: '56px', fontWeight: 900, color: colors.accent }}
@@ -1613,7 +1580,7 @@
                     </div>
                     <div>
                         <AnimatedMetric
-                        endValue={57}
+                        endValue={53}
                         isVisible={visibleElements.has('impact-metrics')}
                         suffix="%"
                         style={{ fontSize: '56px', fontWeight: 900, color: colors.accent }}
@@ -1622,9 +1589,9 @@
                     </div>
                     <div>
                         <AnimatedMetric
-                        endValue={23}
+                        endValue={27}
                         isVisible={visibleElements.has('impact-metrics')}
-                        prefix="€"
+                        prefix="$"
                         style={{ fontSize: '56px', fontWeight: 900, color: colors.accent }}
                         />
                         <div style={{ fontSize: '14px', color: colors.textMuted }}>Optimal CPM achieved</div>
@@ -1649,8 +1616,8 @@
                     opacity: visibleElements.has('impact-cta') ? 1 : 0,
                     transform: visibleElements.has('impact-cta') ? 'translateY(0)' : 'translateY(30px)',
                     transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.3s',
-                    maxWidth: '1000px', // Added
-                    margin: '0 auto' // Added
+                    maxWidth: '1000px',
+                    margin: '0 auto'
                     }}
                 >
                     <h3 style={{ fontSize: '28px', fontWeight: 700, marginBottom: '16px' }}>
@@ -1659,50 +1626,34 @@
                     <p style={{ fontSize: '16px', color: colors.textMuted, marginBottom: '32px' }}>
                     Every brand faces different challenges. Let's discuss how these learnings apply to your market.
                     </p>
-                    <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center' }}>
                     <button style={{
                         backgroundColor: colors.accent,
                         color: colors.bg,
-                        padding: '16px 32px',
+                        padding: '18px 48px',
                         borderRadius: '12px',
-                        fontSize: '16px',
+                        fontSize: '18px',
                         fontWeight: 700,
                         border: 'none',
                         cursor: 'pointer',
                         transition: 'all 0.3s',
                     }}
+                    onClick={() => window.open('https://cal.com/arron-daniels-wysmum/15min', '_blank')}
                     onMouseOver={(e) => e.target.style.backgroundColor = colors.accentDark}
                     onMouseOut={(e) => e.target.style.backgroundColor = colors.accent}
                     >
                         Schedule Discovery Call
                     </button>
-                    <button style={{
-                        backgroundColor: 'transparent', // Make transparent
-                        color: colors.text,
-                        padding: '16px 32px',
-                        borderRadius: '12px',
-                        fontSize: '16px',
-                        fontWeight: 700,
-                        border: `2px solid ${colors.border}`,
-                        cursor: 'pointer',
-                        transition: 'all 0.3s',
-                    }}
-                    onMouseOver={(e) => { e.target.style.borderColor = colors.accent; e.target.style.color = colors.accent; }}
-                    onMouseOut={(e) => { e.target.style.borderColor = colors.border; e.target.style.color = colors.text; }}
-                    >
-                        Download Case Study
-                    </button>
                     </div>
                 </div>
 
                 <div style={{ marginTop: '64px', fontSize: '14px', color: colors.textMuted }}>
-                    <p>Cohort × Ecosia · January - June 2025</p>
+                    <p>Cohort × Ecosia · August 2024 to June 2025</p>
                     <p style={{ marginTop: '8px' }}>Strategic influencer marketing for brands that matter</p>
                 </div>
                 </div>
             </section>
 
-            {/* Inline styles for animations */}
             <style>{`
                 @keyframes bounce {
                 0%, 100% { transform: translateY(0) translateX(-50%); }
@@ -1719,11 +1670,7 @@
         );
         };
 
-        // We removed 'export default App;'
-        
-        // 6. Finally, we mount the <App /> component to the <div id="root">
         ReactDOM.render(<App />, document.getElementById('root'));
     </script>
 </body>
 </html>
-
